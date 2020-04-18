@@ -236,7 +236,7 @@ function water_plants()
   }
 
   for f in all(flowers) do
-    if (distance(water, f) < 7) then
+    if (distance(water, f) < 9) then
       f.health = min(f.health + 80, f.maxhealth)
     end
   end
@@ -323,8 +323,8 @@ function add_flower_patch(x, y, num)
   sprites = {}
   for i=1,num do
     add(sprites, {
-      x = x + flr(rnd(16)) - 8,
-      y = y + flr(rnd(16)) - 8,
+      x = x + flr(rnd(16)) - 12,
+      y = y + flr(rnd(16)) - 12,
       alivesprite = 6,
       sprite = 6
     })
@@ -402,6 +402,7 @@ function add_bullet()
     dead = false
   })
 
+  random_effect_text(shoot_texts, 0.05)
   screen_shake = 3
 end
 
@@ -436,7 +437,7 @@ function update_bullets()
               del(enemies, hit_enemy)
               kills += 1
               score += hit_enemy.maxhealth * killscorescaler
-              if (rnd(1) < 0.1) show_effect_text("yaass slayy")  
+              random_effect_text(kill_texts, 0.1)
             end
           end
         end
@@ -507,8 +508,8 @@ function _update()
     else weaponsprite = 67
     end
     wateranimframes -= 1
-    if wateranimframes==0 then 
-      if(rnd(1) < 0.3) show_effect_text("hydro homie")
+    if wateranimframes==0 then
+      random_effect_text(water_texts)
     end
   end
 
@@ -580,9 +581,9 @@ function _draw()
 
   --bloomguy
   isfacingdown = mousey >= player.y - screeny
-  if playerstill then 
+  if playerstill then
     player.sprite = (isfacingdown and 96 or 100) + max((t \ 4)%6-2,0)
-  else 
+  else
     player.sprite = (isfacingdown and 80 or 82) + (t \ 5)%2
   end
   draw_object(player)
@@ -635,6 +636,14 @@ function _draw()
   score += 0.2 --TEMP TODO
   t+=1
 
+  -- DEBUG
+  -- waterx = player.x + (isweaponfacingleft and (-12) or 20)
+  -- watery = player.y + 8
+  -- circ(waterx-screenx, watery-screeny, 6, 5)
+  -- for f in all(flowers) do
+    -- circ(f.x-screenx, f.y-screeny, 3, 0)
+  -- end
+
   --cls() -- clear screen
   --map(112,0)
   --print("eternal",51,57, 7)
@@ -651,6 +660,12 @@ end
 -- 4 and greater = not rainbowtext
 
 fierycolours = {5,8,9,14,15,9}
+
+function random_effect_text(list, chance)
+  chance = chance or 0.3
+  if (rnd(1) < 0.5) list = generic_texts
+  if (rnd(1) < chance) show_effect_text(list[flr(rnd(#list))+1])
+end
 
 function show_effect_text(text, effect)
   effect_text = text
@@ -696,6 +711,46 @@ function draw_effect_text()
     end
   end
 end
+
+water_texts = {
+  "epic water combo",
+  "wow that's a nice flower",
+  "+10,000 nook miles",
+  "titchmarsh would be proud",
+  "flower power",
+  "splish splash",
+  "hydro homie"
+}
+
+kill_texts = {
+  "combo",
+  "super combo",
+  "mega combo",
+  "ultra combo",
+  "wombo combo",
+  "kill bill",
+  "sluggernaut",
+  "you monster",
+  "death comes to us all",
+  "yaass slayy",
+  "slug is kil"
+}
+
+shoot_texts = {
+  "wow bullet",
+  "bang bang",
+  "pew pew",
+  "brrap brrap"
+}
+
+generic_texts = {
+  "stonks",
+  "you did the thing!",
+  "sample text",
+  "hey! listen!",
+  "owo what's this",
+  "you are a saucy boy"
+}
 
 
 
@@ -893,6 +948,11 @@ __sfx__
 000d00001315013150000000000013150131501a15000000181501815000000000001615016150000000000015150151500000000000151501515016150161501815018150000000000016150000001515000000
 010d00001315013150000000000013150131502215122150211540000022150000002115000000221500000013150131500000000000131501315022151221502115400000221500000021150000002215000000
 010d00001315013150000000000013150131521a1511a150181541815000000000001615016150131411312115150151500000000000151541515016151161501815118150000001800016154161501515115150
+011000000c0500000018050000000c0500000018050000000d0500000019050000000d0500000019050000000c0500000018050000000c0500000018050000000d0500000019050000000d050000001905000000
+011000001810500005241050000518105000052410500005191050000525105000051910500005251050000518155000052415500005181550000524155000051915500005251550000519155000052515500005
+011000000055200552005520055200552005520055200552015520155201552015520155201552015520155200552005520055200552005520055200552005520155201552015520155201552015520155201552
+011000001ab501cb001ab001ab001ab5018b001ab001cb001ab501cb001ab001cb001ab501cb001ab001cb001ab501cb001ab001cb001ab501cb001ab001ab001ab5018b001ab001ab001ab50000001ab0000000
+011000000c050180500c050180500d050190500d050190500c050180500c050180500d050190500d050190500c050180500d050190500c050180500d050190500c050190500c050190500c050190500c05019050
 __music__
 01 08090a41
 02 43444141
@@ -942,7 +1002,7 @@ __music__
 00 41414141
 00 41414141
 00 41414141
-00 41414141
+00 24252627
 00 41414141
 00 41414141
 00 41414141
