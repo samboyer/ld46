@@ -40,7 +40,12 @@ player = {
 }
 
 bullets={}
---(posx,posy,dx,dy,spritenum)
+--(x,y,dx,dy,sprite,life,dead)
+
+flowers={}
+--(x,y,sprite)
+
+add_flower(20,20)
 
 score = 0
 kills = 0
@@ -124,6 +129,14 @@ function update_mouse()
   if (click) add_bullet()
 end
 
+function add_flower(x, y)
+  add(flowers, {
+    x = x,
+    y = y,
+    sprite = 6
+  })
+end
+
 function add_bullet()
   sfx(0, 3)
   dx = mousex + screenx - player.x
@@ -144,7 +157,7 @@ function add_bullet()
   })
 
   screen_shake = 10
-  show_effect_text("wow bullet")
+  show_effect_text("wombu combu")
 end
 
 function update_bullets()
@@ -163,6 +176,7 @@ function update_bullets()
   if (deadbullet != nil) del(bullets, deadbullet)
 end
 
+t = 0
 function _update()
   control_player()
 
@@ -189,7 +203,6 @@ function draw_sprite(spriteno, x, y, flip_x)
   spr(spriteno, x - screenx + screen_shake_x, y - screeny + screen_shake_y, 1, 1, flip_x)
 end
 
-t = 0
 function draw_object(obj)
   spr(obj.sprite, obj.x - screenx + screen_shake_x, obj.y - screeny + screen_shake_y, 1, 1, obj.flip_x or false)
 end
@@ -217,6 +230,10 @@ function _draw()
 
   for b in all(bullets) do
     if (not b.dead) draw_object(b)
+  end
+
+  for f in all(flowers) do
+    draw_object(f)
   end
 
   --UI
