@@ -39,16 +39,17 @@ player = {
   sprite = 64
 }
 
-bullets={}
+bullets = {}
 --(x,y,dx,dy,sprite,life,dead)
 
-flowers={}
+flowers = {}
 --(x,y,sprite)
 
-add_flower(20,20)
+enemies = {}
 
 score = 0
 kills = 0
+health = 100
 
 function check_collisions(x, y, dx, dy, in_x) -- assume width=height=8
   if (in_x) then
@@ -70,12 +71,12 @@ function control_player()
   x = 0
   y = 0
 
-  if(btn(4)) and wateranimframes == 0 then 
+  if(btn(4)) and wateranimframes == 0 then
     wateranimframes = 30
     sfx(7)
   end
 
-  if wateranimframes == 0 then 
+  if wateranimframes == 0 then
     if (btn(0)) x -= 1
     if (btn(1)) x += 1
     if (btn(2)) y -= 1
@@ -143,8 +144,28 @@ function add_flower(x, y)
   add(flowers, {
     x = x,
     y = y,
-    sprite = 6
+    sprite = 6,
+    health = 100
   })
+end
+
+function add_enemy(x, y)
+  add(enemies, {
+    x = x,
+    y = y,
+    maxspd = 0.5,
+    sprite = 45,
+    health = 100,
+    dead = false
+  })
+end
+
+-- TEMPORARY
+for i=1,50 do
+  add_flower(flr(rnd(256-24))+8, flr(rnd(256-24))+8)
+end
+for i=1,50 do
+  add_enemy(flr(rnd(256-24))+8, flr(rnd(256-24))+8)
 end
 
 function add_bullet()
@@ -186,6 +207,14 @@ function update_bullets()
   if (deadbullet != nil) del(bullets, deadbullet)
 end
 
+function update_health()
+  temp_health = 0
+  for f in all(flowers) do
+    temp_health += f.health
+  end
+  health = temp_health \ #flowers
+end
+
 t = 0
 weaponsprite = 65
 
@@ -195,6 +224,8 @@ function _update()
   update_mouse()
 
   update_bullets()
+
+  update_health()
 
   if wateranimframes==0 then
     weaponsprite = 65
@@ -237,26 +268,31 @@ function _draw()
   oy =  sy%8
   map((sx-ox)/8,(sy-oy)/8,-ox,-oy)
 
+  --flowers
+  for f in all(flowers) do
+    draw_object(f)
+  end
+
+  --enemies
+  for e in all(enemies) do
+    if (not e.dead) draw_object(e)
+  end
+
   --doomguy
-  pxs = player.x - screenx
-  pys = player.y - screeny
   if playerstill then player.sprite = 96 + (t \ 5)%5
   else player.sprite = 80 + (t \ 5)%2
   end
   draw_object(player)
 
-  --weapon 
-  if mousex <= pxs
+  --weapon
+  if mousex <= player.x - screenx
   then draw_sprite(weaponsprite, player.x - 8, player.y) --right hand
   else draw_sprite(weaponsprite, player.x + 8, player.y, true) --left hand
   end
 
+  --bullets
   for b in all(bullets) do
     if (not b.dead) draw_object(b)
-  end
-
-  for f in all(flowers) do
-    draw_object(f)
   end
 
   --UI
@@ -266,7 +302,7 @@ function _draw()
   print("score: "..score, 2+ui_shake_x,2+ui_shake_y, 7)
   spr(46, 2+ui_shake_x,110+ui_shake_y, 2,2)
   rect(20,115, 122,122, 7) --health bar
-  rectfill(21+ui_shake_x,116+ui_shake_y, 121+ui_shake_x,121+ui_shake_y, 14)
+  rectfill(21+ui_shake_x,116+ui_shake_y, 21+health+ui_shake_x,121+ui_shake_y, 14)
 
   spr(45, 105+ui_shake_x,1+ui_shake_y)--kills
   print(kills, 115+ui_shake_x,2+ui_shake_y, 7)
