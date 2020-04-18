@@ -125,7 +125,7 @@ function oneshot_splash(worldx,worldy, extrafx)
     local _vy = cos(_r) * -0.008
     make_particle(axis((worldx - screenx)/127, _vx), axis((worldy - screeny)/127, _vy, 0.001), {0, 24}, axis(), 5+rnd(3))
   end
-  if extrafx then 
+  if extrafx then
     sfx(6)
     screen_shake = 7
   end
@@ -216,7 +216,7 @@ function water_plants()
 
   for f in all(flowers) do
     if (distance(water, f) < 7) then
-      f.health += 80
+      f.health = min(f.health + 80, f.maxhealth)
     end
   end
 
@@ -311,6 +311,7 @@ function add_flower_patch(x, y, num)
     x = x,
     y = y,
     health = 100,
+    maxhealth = 100,
     sprites = sprites
   })
 end
@@ -393,7 +394,7 @@ function update_bullets()
       if b.life < 0 then
         b.dead = true
         oneshot_splash(b.x,b.y, false)
-      else 
+      else
         if check_collisions(b.x, b.y, b.dx, b.dy, false) or check_collisions(b.x, b.y, b.dx, b.dy, true) then
           b.dead = true
           oneshot_splash(b.x,b.y,true)
@@ -512,17 +513,35 @@ function draw_object(obj)
   spr(obj.sprite, obj.x - screenx + screen_shake_x, obj.y - screeny + screen_shake_y, 1, 1, obj.flip_x or false)
 end
 
+function draw_arrow(obj, dir)
+  spr(18 + dir, min(max(((obj.x - screenx)\4)*4, 4), 116), min(max(((obj.y - screeny)\4)*4, 4), 116))
+end
+
+function draw_enemies()
+  for e in all(enemies) do
+    if (not e.dead) draw_object(e)
+  end
+  for e in all(enemies) do
+    if (not e.dead) then
+      if (e.y < screeny) then
+        draw_arrow(e, 1)
+      elseif (e.y > screeny + 128) then
+        draw_arrow(e, 3)
+      elseif (e.x < screenx) then
+        draw_arrow(e, 2)
+      elseif (e.x > screenx + 128) then
+        draw_arrow(e, 0)
+      end
+    end
+  end
+end
+
 function _draw()
   sx = screenx - screen_shake_x
   sy = screeny - screen_shake_y
   ox = sx%8
   oy =  sy%8
   map((sx-ox)/8,(sy-oy)/8,-ox,-oy)
-
-  --enemies
-  for e in all(enemies) do
-    if (not e.dead) draw_object(e)
-  end
 
   --flowers
   for f in all(flowers) do
@@ -531,6 +550,8 @@ function _draw()
       draw_object(s)
     end
   end
+
+  draw_enemies()
 
   --bloomguy
   isfacingdown = mousey >= player.y - screeny
@@ -632,7 +653,7 @@ function draw_effect_text()
           print(sub(effect_text,j,j), textx - i + text_offset + ui_shake_x, texty + i + ui_shake_y, col)
         end
       end
-      if effect_text_time < 33 then 
+      if effect_text_time < 33 then
         print(sub(effect_text,j,j), textx + text_offset + ui_shake_x, texty + ui_shake_y, (effect_text_effect > 5) and (t%2)*7 or 0)
       end
     end
