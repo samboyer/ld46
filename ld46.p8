@@ -380,6 +380,7 @@ function add_bullet()
     dead = false
   })
 
+  random_effect_text(shoot_texts, 0.05)
   screen_shake = 3
 end
 
@@ -414,7 +415,7 @@ function update_bullets()
               del(enemies, hit_enemy)
               kills += 1
               score += hit_enemy.maxhealth * killscorescaler
-              if (rnd(1) < 0.1) show_effect_text("yaass slayy")
+              random_effect_text(kill_texts, 0.1)
             end
           end
         end
@@ -480,7 +481,7 @@ function _update()
     end
     wateranimframes -= 1
     if wateranimframes==0 then
-      if(rnd(1) < 0.3) show_effect_text("hydro homie")
+      random_effect_text(water_texts)
     end
   end
 
@@ -623,6 +624,12 @@ end
 
 fierycolours = {5,8,9,14,15,9}
 
+function random_effect_text(list, chance)
+  chance = chance or 0.3
+  if (rnd(1) < 0.5) list = generic_texts
+  if (rnd(1) < chance) show_effect_text(list[flr(rnd(#list))+1])
+end
+
 function show_effect_text(text, effect)
   effect_text = text
   effect_text_time = 40
@@ -667,6 +674,46 @@ function draw_effect_text()
     end
   end
 end
+
+water_texts = {
+  "epic water combo",
+  "wow that's a nice flower",
+  "+10,000 nook miles",
+  "titchmarsh would be proud",
+  "flower power",
+  "splish splash",
+  "hydro homie"
+}
+
+kill_texts = {
+  "combo",
+  "super combo",
+  "mega combo",
+  "ultra combo",
+  "wombo combo",
+  "kill bill",
+  "sluggernaut",
+  "you monster",
+  "death comes to us all",
+  "yaass slayy",
+  "slug is kil"
+}
+
+shoot_texts = {
+  "wow bullet",
+  "bang bang",
+  "pew pew",
+  "brrap brrap"
+}
+
+generic_texts = {
+  "stonks",
+  "you did the thing!",
+  "sample text",
+  "hey! listen!",
+  "owo what's this",
+  "you are a saucy boy"
+}
 
 
 
