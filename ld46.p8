@@ -85,7 +85,7 @@ end
 function get_axis(a, l)
  if is_texture_axis(a) then
   return sget(l%8 + a[1], a[2] + l\8) -- Get value at addr
- else 
+ else
   return a.n
  end
 end
@@ -112,7 +112,7 @@ end
 
 function emitter_wateringcan()
   local _r = 0.12 + rnd(0.3)
-  if not isweaponfacingright then _r = -_r end
+  if not isweaponfacingleft then _r = -_r end
   local _vx = 0.004 * sin(_r)
   local _vy = cos(_r) * -0.004
   make_particle(axis((weapontipx - screenx)/127, _vx), axis((weapontipy - screeny)/127, _vy, 0.0003), {0, 24}, axis(), 10+rnd(5))
@@ -170,7 +170,7 @@ player = {
 }
 weapontipx = 0
 weapontipx = 0
-isweaponfacingright = false
+isweaponfacingleft = false
 
 bullets = {}
 --(x,y,dx,dy,sprite,life,dead)
@@ -207,21 +207,36 @@ playerstill = true
 
 wateranimframes = 0
 
+function water_plants()
+  water = {
+    x = player.x + (isweaponfacingleft and (-12) or 20),
+    y = player.y + 8
+  }
+
+  for f in all(flowers) do
+    if (distance(water, f) < 7) then
+      f.health += 80
+    end
+  end
+
+  wateranimframes = 30
+  sfx(7)
+  make_emitter(emitter_wateringcan, 35, 1)
+end
+
 function control_player()
   x = 0
   y = 0
 
   if(btn(4)) and wateranimframes == 0 then
-    wateranimframes = 30
-    sfx(7)
-    make_emitter(emitter_wateringcan, 35, 1)
+    water_plants()
   end
 
   if wateranimframes == 0 then
-    if (btn(0)) x -= 1
-    if (btn(1)) x += 1
-    if (btn(2)) y -= 1
-    if (btn(3)) y += 1
+    if (btn(0,0) or btn(0,1)) x -= 1
+    if (btn(1,0) or btn(1,1)) x += 1
+    if (btn(2,0) or btn(2,1)) y -= 1
+    if (btn(3,0) or btn(3,1)) y += 1
   end
 
   playerstill = x==0 and y==0
@@ -287,6 +302,7 @@ function add_flower_patch(x, y, num)
     add(sprites, {
       x = x + flr(rnd(16)) - 8,
       y = y + flr(rnd(16)) - 8,
+      alivesprite = 6,
       sprite = 6
     })
   end
@@ -441,9 +457,9 @@ function _update()
 
   update_bullets()
 
-  --update_enemies()
+  update_enemies()
 
-  --update_health()
+  update_health()
 
   if wateranimframes==0 then
     weaponsprite = 65
@@ -494,6 +510,7 @@ function _draw()
   --flowers
   for f in all(flowers) do
     for s in all(f.sprites) do
+      s.sprite = (f.health == 0) and 22 or s.alivesprite
       draw_object(s)
     end
   end
@@ -505,11 +522,11 @@ function _draw()
   draw_object(player)
 
   --weapon
-  isweaponfacingright = mousex <= player.x - screenx
-  if isweaponfacingright then --right hand
+  isweaponfacingleft = mousex <= player.x - screenx
+  if isweaponfacingleft then --right hand
     draw_sprite(weaponsprite, player.x - 8, player.y)
     weapontipx = player.x - 5
-  else 
+  else
     draw_sprite(weaponsprite, player.x + 8, player.y, true) --left hand
     weapontipx = player.x + 13
   end
@@ -616,10 +633,10 @@ __gfx__
 060006000c000c000000000000000000000000000000000000000000333333330000000000000000000000000000000000000000000000000000000000000000
 0060600000c0c0000000000000000000000000000000000000000000333333330000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000333333330000000000000000000000000000000000000000000000000000000000000000
-0060600000c0c0000000000000000000000000000000000000000000333333330000000000000000000000000000000000000000000000000000000000000000
-060006000c000c000000000000000000000000000000000000000000333333330000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000333333330000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000333333330000000000000000000000000000000000000000000000000000000000000000
+0060600000c0c0000000000000000000000000000000000000004000333333330000000000000000000000000000000000000000000000000000000000000000
+060006000c000c000000000000000000000000000000000000047400333333330000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000000000000004300333333330000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000000000000000b00333333330000000000000000000000000000000000000000000000000000000000000000
 00000000000c70000000000000c0c00000000000000c70000000000000c0c000000000000000000000000000000000000000000070000007000000eeee000000
 0000000000cc7000000000000000c0000000000000cc70000000000000cc000000000000000000000000000000000000000000000777777000000eeeeee00000
 c00cc77000ccc0000cc770c0000c00000c0c777000ccc0000cc77007000cc00000000000000000000000000000000000000000000766766000000eeeeee00000
