@@ -1,13 +1,13 @@
 pico-8 cartridge // http://www.pico-8.com
 version 18
 __lua__
--- Ludum Dare 46 
+-- Ludum Dare 46
 -- by Josh S and Sam B
 
 -- (^can change later)
 
 
--- START PICO-Tween 
+-- START PICO-Tween
 -- For all easing functions:
 -- t = elapsed time
 -- b = begin
@@ -56,7 +56,7 @@ function acos(x)
   return negate * 3.14159265358979 + ret;
 end
 
---- Function for calculating 
+--- Function for calculating
 -- exponents to a higher degree
 -- of accuracy than using the
 -- ^ operator.
@@ -64,7 +64,7 @@ end
 -- Source: https://www.lexaloffle.com/bbs/?tid=27864
 -- @param x Number to apply exponent to.
 -- @param a Exponent to apply.
--- @return The result of the 
+-- @return The result of the
 -- calculation.
 function pow(x,a)
   if (a==0) return 1
@@ -98,7 +98,7 @@ end
 function inOutQuad(t, b, c, d)
   t = t / d * 2
   if (t < 1) return c / 2 * pow(t, 2) + b
-  return -c / 2 * ((t - 1) * (t - 3) - 1) + b  
+  return -c / 2 * ((t - 1) * (t - 3) - 1) + b
 end
 
 function outInQuad(t, b, c, d)
@@ -427,7 +427,7 @@ print(str)
 
 -- foreach and anon functions
 total=0
-foreach(a, 
+foreach(a,
  function(i)
   total=total+i
  end
@@ -441,31 +441,37 @@ print("total: "..total)
 -- _draw() once per frame if
 -- they exist
 
-t=0
-function _update()
- t=t+1
-end
+player = {
+  dx = 0,
+  dy = 0,
+  x = 0,
+  y = 0,
+  accel = 0.4,
+  maxspd = 1.8
+}
 
+dx = 0
+dy = 0
 playerx = 10
 playery = 10
 
 function _draw()
   map(0,0)
 
-  spr(64,playerx,playery)
+  spr(64,player.x,player.y)
 
   if oldclick then ret = 17 else ret = 16 end
   spr(ret, mousex+3, mousey+3)
 
  -- show current value of t
  rectfill(0,90,30,96,5)
- print("t: "..t,1,91,7)
+ -- print("t: "..t,1,91,7)
 
  -- show state of buttons
 
- print("buttons: ", 1,101,7) 
+ print("buttons: ", 1,101,7)
 
- for p=0,7 do 
+ for p=0,7 do
  for i=0,5 do
   col=5
   if(btn(i,p)) then col=8+i end
@@ -477,12 +483,42 @@ function _draw()
 end
 
 function control_player()
-  vel = 3
-  if (btn(0)) playerx -= vel 
-  if (btn(1)) playerx += vel 
-  if (btn(2)) playery -= vel 
-  if (btn(3)) playery += vel 
- 
+  x = 0
+  y = 0
+  if (btn(0)) x -= 1
+  if (btn(1)) x += 1
+  if (btn(2)) y -= 1
+  if (btn(3)) y += 1
+  if (x == 0) then
+    if abs(player.dx) < player.accel then
+      player.dx = 0
+    else
+      sign = player.dx / abs(player.dx)
+      player.dx -= sign * player.accel
+    end
+  else
+    player.dx += x * player.accel
+  end
+  if (y == 0) then
+    if abs(player.dy) < player.accel then
+      player.dy = 0
+    else
+      sign = player.dy / abs(player.dy)
+      player.dy -= sign * player.accel
+    end
+  else
+    player.dy += y * player.accel
+  end
+  -- clamp
+  spd = sqrt(player.dx*player.dx + player.dy*player.dy) / player.maxspd
+  if (spd > 1) then
+    player.dx /= spd
+    player.dy /= spd
+  end
+
+  player.x += player.dx
+  player.y += player.dy
+
   -- if (pl.t%4) == 0) then
   --  sfx(1)
   -- end
