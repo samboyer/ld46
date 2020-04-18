@@ -36,6 +36,7 @@ player = {
   y = 128,
   accel = 0.4,
   maxspd = 1.8,
+  damage = 50,
   sprite = 64
 }
 
@@ -169,7 +170,9 @@ function add_enemy(x, y)
     x = x,
     y = y,
     maxspd = 0.5,
+    health = 100,
     attackdist = 5,
+    damage = 0.5,
     sprite = 45,
     health = 100,
     dead = false
@@ -225,7 +228,7 @@ function add_bullet()
   })
 
   screen_shake = 10
-  if(rnd(1) < 0.3) then show_effect_text("wombu combu") end
+  if(rnd(1) < 0.3) then show_effect_text("thenc") end
 
 end
 
@@ -237,7 +240,21 @@ function update_bullets()
       b.y += b.dy
       b.life -= 1
       b.sprite = 32+(b.sprite-28) %8 --cycle sprite
-      b.dead = (b.life < 0) or check_collisions(b.x, b.y, b.dx, b.dy, false) or check_collisions(b.x, b.y, b.dx, b.dy, true)
+      if ((b.life < 0) or check_collisions(b.x, b.y, b.dx, b.dy, false) or check_collisions(b.x, b.y, b.dx, b.dy, true)) then
+        b.dead = true
+      else
+        hit_enemy = nil
+        for e in all(enemies) do
+          if ((dead_enemy == nil) and abs(b.x - e.x) < 8 and abs(b.y - e.y) < 8) then
+            hit_enemy = e
+          end
+        end
+        if (hit_enemy != nil) then
+          b.dead = true
+          hit_enemy.health -= player.damage
+          if (hit_enemy.health <= 0) del(enemies, hit_enemy)
+        end
+      end
     else
       deadbullet = b
     end
@@ -254,6 +271,8 @@ function update_enemies()
         --show_effect_text(""..targetdist)
         e.x += (e.maxspd / targetdist) * (e.target.x - e.x)
         e.y += (e.maxspd / targetdist) * (e.target.y - e.y)
+      else
+        e.target.health = max(e.target.health - e.damage, 0)
       end
 
       e.dead = false -- TODO BULLET CHECK? MAYBE PER BULLET
