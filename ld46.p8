@@ -139,7 +139,7 @@ function add_bullet()
   dx = mousex + screenx - player.x
   dy = mousey + screeny - player.y
   mag = sqrt(dx*dx + dy*dy) * bulletspeed
-  if abs(dx)>abs(dy) 
+  if abs(dx)>abs(dy)
   then if dx>0 then sprite = 0 else sprite = 2 end
   else if dy>0 then sprite = 3 else sprite = 1 end
   end
@@ -154,6 +154,7 @@ function add_bullet()
   })
 
   screen_shake = 10
+  show_effect_text("wow bullet")
 end
 
 function update_bullets()
@@ -201,6 +202,8 @@ function _update()
   --update effects
   screen_shake_x = rnd(screen_shake*2) - screen_shake
   screen_shake_y = rnd(screen_shake*2) - screen_shake
+  ui_shake_x = (-0.5) * screen_shake_x
+  ui_shake_y = (-0.5) * screen_shake_y
   screen_shake = max(screen_shake - screen_shake_decay, 0)
 end
 
@@ -241,20 +244,63 @@ function _draw()
 
   --UI
   if oldclick then ret = 17 else ret = 16 end
-  spr(ret, mousex-3, mousey-3)
+  spr(ret, mousex-3+ui_shake_x, mousey-3+ui_shake_y)
 
-  print("score: "..score, 2,2, 7)
-  spr(46, 2,110, 2,2)
+  print("score: "..score, 2+ui_shake_x,2+ui_shake_y, 7)
+  spr(46, 2+ui_shake_x,110+ui_shake_y, 2,2)
   rect(20,115, 122,122, 7) --health bar
-  rectfill(21,116, 121,121, 14)
+  rectfill(21+ui_shake_x,116+ui_shake_y, 121+ui_shake_x,121+ui_shake_y, 14)
 
-  spr(45, 105,1)--kills
-  print(kills, 115,2, 7) 
+  spr(45, 105+ui_shake_x,1+ui_shake_y)--kills
+  print(kills, 115+ui_shake_x,2+ui_shake_y, 7)
+
+  if (effect_text_time > 0) draw_effect_text();
 
   score=t --TEMP
   kills = 100+t\10
   t+=1
 end
+
+-->8
+--
+-- EFFECTS
+-- 0 = wavey
+-- 1 = circles
+-- 2 = wavey + flashing
+-- 3 = circles + flashing
+-- 4 and greater = not rainbowtext
+
+function show_effect_text(text, effect)
+  effect_text = text
+  effect_text_time = 40
+  effect_text_effect = effect or flr(rnd(4))
+end
+
+effect_text = nil
+effect_text_effect = 0
+effect_text_time = 0
+effect_text_width = 6
+effect_count = 4
+function draw_effect_text()
+  effect_text_time -= 1;
+
+  textx = (128 - effect_text_width * #effect_text)\2
+  texty = 60
+
+  if (effect_text_effect < 4) then
+    for j=1,#effect_text do
+      text_offset = effect_text_width*(j-1)
+      for i=0,6 do
+        trig_oper = t/30 + j/5 + i/30
+        offset_x = 2 * ((effect_text_effect % 2 == 0) and sin(trig_oper) or cos(trig_oper)) + text_offset
+        offset_y = 5 * sin(trig_oper)
+        print(sub(effect_text,j,j), textx + offset_x + ui_shake_x, texty + offset_y + ui_shake_y, 8+i)
+      end
+      print(sub(effect_text,j,j), textx + text_offset + ui_shake_x, texty + ui_shake_y, (effect_text_effect > 1) and (t%2)*7 or 0)
+    end
+  end
+end
+
 
 
 __gfx__
