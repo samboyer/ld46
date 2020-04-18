@@ -165,6 +165,7 @@ player = {
   y = 128,
   accel = 0.4,
   maxspd = 1.8,
+  damage = 50,
   sprite = 64
 }
 weapontipx = 0
@@ -186,6 +187,7 @@ health = 100
 function distance(o1, o2)
   dx = o1.x - o2.x
   dy = o1.y - o2.y
+  if (abs(dx) > 128 or abs(dy) > 128) return 30000.0
   return sqrt(dx*dx + dy*dy)
 end
 
@@ -279,36 +281,55 @@ function update_mouse()
   if (click) add_bullet()
 end
 
-function add_flower(x, y)
+function add_flower_patch(x, y, num)
+  sprites = {}
+  for i=1,num do
+    add(sprites, {
+      x = x + flr(rnd(16)) - 8,
+      y = y + flr(rnd(16)) - 8,
+      sprite = 6
+    })
+  end
   add(flowers, {
     x = x,
     y = y,
-    sprite = 6,
-    health = 100
+    health = 100,
+    sprites = sprites
   })
 end
 
 function add_enemy(x, y)
-  add(enemies, {
+  e = {
     x = x,
     y = y,
     maxspd = 0.5,
+    health = 100,
     attackdist = 5,
+    damage = 0.5,
     sprite = 45,
     health = 100,
     dead = false
-  })
+  }
+
+  target = nil
+  targetdist = 10000
+  for f in all(flowers) do
+    dist = distance(e, f)
+    if (dist < targetdist) then
+      target = f
+      targetdist = dist
+    end
+  end
+  e.target = target
+
+  add(enemies, e)
 end
 
 -- TEMPORARY
 for i=1,10 do
   centerx = flr(rnd(worldsizex-32))+16
   centery = flr(rnd(worldsizey-32))+16
-
-  for i=1, flr(rnd(5))+6 do
-    add_flower(centerx + flr(rnd(16))-8, 
-      centery + flr(rnd(16))-8)
-  end
+  add_flower_patch(centerx, centery, flr(rnd(5))+6)
 end
 
 for i=1,50 do
@@ -340,8 +361,8 @@ function add_bullet()
   })
 
   screen_shake = 10
-  if(rnd(1) < 0.3) then show_effect_text("wombu combu") end
-  
+  if(rnd(1) < 0.3) then show_effect_text("thenc") end
+
 end
 
 function update_bullets()
@@ -352,7 +373,21 @@ function update_bullets()
       b.y += b.dy
       b.life -= 1
       b.sprite = 32+(b.sprite-28) %8 --cycle sprite
-      b.dead = (b.life < 0) or check_collisions(b.x, b.y, b.dx, b.dy, false) or check_collisions(b.x, b.y, b.dx, b.dy, true)
+      if ((b.life < 0) or check_collisions(b.x, b.y, b.dx, b.dy, false) or check_collisions(b.x, b.y, b.dx, b.dy, true)) then
+        b.dead = true
+      else
+        hit_enemy = nil
+        for e in all(enemies) do
+          if ((dead_enemy == nil) and abs(b.x - e.x) < 8 and abs(b.y - e.y) < 8) then
+            hit_enemy = e
+          end
+        end
+        if (hit_enemy != nil) then
+          b.dead = true
+          hit_enemy.health -= player.damage
+          if (hit_enemy.health <= 0) del(enemies, hit_enemy)
+        end
+      end
     else
       deadbullet = b
     end
@@ -363,19 +398,14 @@ end
 function update_enemies()
   deadenemy = nil
   for e in all(enemies) do
-    if (not e.dead) then
-      nearest_flower = nil
-      nearest_dist = 10000
-      for f in all(flowers) do
-        dist = distance(e, f)
-        if (dist < nearest_dist) then
-          nearest_flower = f
-          nearest_dist = dist
-        end
-      end
-      if (nearest_dist > e.attackdist) then
-        e.x += (e.maxspd / nearest_dist) * (nearest_flower.x - e.x)
-        e.y += (e.maxspd / nearest_dist) * (nearest_flower.y - e.y)
+    if (not e.dead and e.target != nil) then
+      targetdist = distance(e, e.target)
+      if (targetdist > e.attackdist) then
+        --show_effect_text(""..targetdist)
+        e.x += (e.maxspd / targetdist) * (e.target.x - e.x)
+        e.y += (e.maxspd / targetdist) * (e.target.y - e.y)
+      else
+        e.target.health = max(e.target.health - e.damage, 0)
       end
 
       e.dead = false -- TODO BULLET CHECK? MAYBE PER BULLET
@@ -448,14 +478,16 @@ function _draw()
   oy =  sy%8
   map((sx-ox)/8,(sy-oy)/8,-ox,-oy)
 
-  --flowers
-  for f in all(flowers) do
-    draw_object(f)
-  end
-
   --enemies
   for e in all(enemies) do
     if (not e.dead) draw_object(e)
+  end
+
+  --flowers
+  for f in all(flowers) do
+    for s in all(f.sprites) do
+      draw_object(s)
+    end
   end
 
   --doomguy
