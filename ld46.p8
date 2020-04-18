@@ -215,7 +215,7 @@ function water_plants()
 
   for f in all(flowers) do
     if (distance(water, f) < 7) then
-      f.health += 80
+      f.health = min(f.health + 80, f.maxhealth)
     end
   end
 
@@ -310,6 +310,7 @@ function add_flower_patch(x, y, num)
     x = x,
     y = y,
     health = 100,
+    maxhealth = 100,
     sprites = sprites
   })
 end
@@ -499,17 +500,12 @@ function draw_arrow(obj, dir)
   spr(18 + dir, min(max(((obj.x - screenx)\4)*4, 4), 116), min(max(((obj.y - screeny)\4)*4, 4), 116))
 end
 
-function _draw()
-  sx = screenx - screen_shake_x
-  sy = screeny - screen_shake_y
-  ox = sx%8
-  oy =  sy%8
-  map((sx-ox)/8,(sy-oy)/8,-ox,-oy)
-
-  --enemies
+function draw_enemies()
+  for e in all(enemies) do
+    if (not e.dead) draw_object(e)
+  end
   for e in all(enemies) do
     if (not e.dead) then
-      draw_object(e)
       if (e.y < screeny) then
         draw_arrow(e, 1)
       elseif (e.y > screeny + 128) then
@@ -521,6 +517,14 @@ function _draw()
       end
     end
   end
+end
+
+function _draw()
+  sx = screenx - screen_shake_x
+  sy = screeny - screen_shake_y
+  ox = sx%8
+  oy =  sy%8
+  map((sx-ox)/8,(sy-oy)/8,-ox,-oy)
 
   --flowers
   for f in all(flowers) do
@@ -529,6 +533,8 @@ function _draw()
       draw_object(s)
     end
   end
+
+  draw_enemies()
 
   --doomguy
   if playerstill then player.sprite = 96 + (t \ 5)%5
