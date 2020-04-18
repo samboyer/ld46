@@ -357,8 +357,8 @@ oldclick = false
 screenx = 0
 screeny = 0
 screenborder = 32 -- how close guy can get before moving screen
-worldsizex = 128 --size of arena in pixels
-worldsizey = 128
+worldsizex = 256 --size of arena in pixels
+worldsizey = 256
 bulletSpeed = 0.5
 
 cls() -- clear screen
@@ -376,11 +376,11 @@ function check_collisions(x, y, dx, dy, in_x) -- assume width=height=8
   if (in_x) then
     checkx = x + dx + ((dx > 0) and 8 or 0)
     tilex = checkx / 8
-    return (fget(mget(tilex, y / 8), 0) or fget(mget(tilex, (y+7.9) / 8), 0))
+    return (checkx > worldsizex or checkx < 0 or fget(mget(tilex, y / 8), 0) or fget(mget(tilex, (y+7.9) / 8), 0))
   else
     checky = y + dy + ((dy > 0) and 8 or 0)
     tiley = checky / 8
-    return (fget(mget(x / 8, tiley), 0) or fget(mget((x+7.9) / 8, tiley), 0))
+    return (checky > worldsizey or checky < 0 or fget(mget(x / 8, tiley), 0) or fget(mget((x+7.9) / 8, tiley), 0))
   end
 end
 
