@@ -51,6 +51,12 @@ score = 0
 kills = 0
 health = 100
 
+function distance(o1, o2)
+  dx = o1.x - o2.x
+  dy = o1.y - o2.y
+  return sqrt(dx*dx + dy*dy)
+end
+
 function check_collisions(x, y, dx, dy, in_x) -- assume width=height=8
   if (in_x) then
     checkx = x + dx + ((dx > 0) and 8 or 0)
@@ -154,6 +160,7 @@ function add_enemy(x, y)
     x = x,
     y = y,
     maxspd = 0.5,
+    attackdist = 5,
     sprite = 45,
     health = 100,
     dead = false
@@ -207,6 +214,32 @@ function update_bullets()
   if (deadbullet != nil) del(bullets, deadbullet)
 end
 
+function update_enemies()
+  deadenemy = nil
+  for e in all(enemies) do
+    if (not e.dead) then
+      nearest_flower = nil
+      nearest_dist = 10000
+      for f in all(flowers) do
+        dist = distance(e, f)
+        if (dist < nearest_dist) then
+          nearest_flower = f
+          nearest_dist = dist
+        end
+      end
+      if (nearest_dist > e.attackdist) then
+        e.x += (e.maxspd / nearest_dist) * (nearest_flower.x - e.x)
+        e.y += (e.maxspd / nearest_dist) * (nearest_flower.y - e.y)
+      end
+
+      e.dead = false -- TODO BULLET CHECK? MAYBE PER BULLET
+    else
+      deadenemy = e
+    end
+  end
+  if (deadenemy != nil) del(enemies, deadenemy)
+end
+
 function update_health()
   temp_health = 0
   for f in all(flowers) do
@@ -224,6 +257,8 @@ function _update()
   update_mouse()
 
   update_bullets()
+
+  update_enemies()
 
   update_health()
 
