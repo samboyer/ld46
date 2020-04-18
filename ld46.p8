@@ -22,25 +22,11 @@ emitters = {}
 function update_particles() --used to be _update60
  foreach(particles, update_particle)
  foreach(emitters, update_emitter)
---  -- Demo Controls
---  if(btnp(ヤよや) and demo_i < #demo_l) demo_i += 1 
---  if(btnp(ヤよや) and demo_i > 1) demo_i -= 1 
---  if(btnp(ヤよや)) then
---   if(demo_i==1) make_emitter(demo_emitter_wind, 50, 1)
---   if(demo_i==2) make_emitter(demo_emitter_sparks, 50, 1)
---   if(demo_i==3) make_emitter(demo_emitter_fireflies, 50, 5)
---   if(demo_i==4) make_emitter(demo_emitter_dome, 50, 1)
---  end
 end
 function draw_particles() --used to be _draw
---  cls()
  foreach(particles, draw_particle)
---  -- Demo Print
---  print(stat(7), 0, 0, 7)
+ print(stat(7), 0, 0, 7)
  print(#particles, 0, 92, 7)
---  print(demo_l[demo_i], 0, 100, 7)
---  print("press ヤよやヤよや to cycle", 0, 108, 7)
---  print("press ヤよや to test", 0, 116, 7)
 end
 -- Axis are from 0 to 1
 -- Axis(x, y, c, r) - axis variable
@@ -132,6 +118,19 @@ function emitter_wateringcan()
   make_particle(axis((weapontipx - screenx)/127, _vx), axis((weapontipy - screeny)/127, _vy, 0.0003), {0, 24}, axis(), 10+rnd(5))
  end
 
+function oneshot_splash(worldx,worldy, extrafx)
+  for i=0,10 do
+    local _r = rnd(1)-0.5
+    local _vx = 0.008 * sin(_r)
+    local _vy = cos(_r) * -0.008
+    make_particle(axis((worldx - screenx)/127, _vx), axis((worldy - screeny)/127, _vy, 0.001), {0, 24}, axis(), 5+rnd(3))
+  end
+  if extrafx then 
+    sfx(6)
+    screen_shake = 10
+  end
+ end
+
 
 
 -->8
@@ -152,7 +151,6 @@ worldsizey = 256
 bulletspeed = 0.5
 bulletlife = 40 -- life of bullet in frames
 
-music(56)
 
 --EFFECTS
 screen_shake = 0
@@ -362,7 +360,7 @@ function add_bullet()
     dead = false
   })
 
-  screen_shake = 10
+  screen_shake = 5
   if(rnd(1) < 0.3) then show_effect_text("thenc") end
 
 end
@@ -375,19 +373,26 @@ function update_bullets()
       b.y += b.dy
       b.life -= 1
       b.sprite = 32+(b.sprite-28) %8 --cycle sprite
-      if ((b.life < 0) or check_collisions(b.x, b.y, b.dx, b.dy, false) or check_collisions(b.x, b.y, b.dx, b.dy, true)) then
+      if b.life < 0 then
         b.dead = true
-      else
-        hit_enemy = nil
-        for e in all(enemies) do
-          if ((dead_enemy == nil) and abs(b.x - e.x) < 8 and abs(b.y - e.y) < 8) then
-            hit_enemy = e
-          end
-        end
-        if (hit_enemy != nil) then
+        oneshot_splash(b.x,b.y, false)
+      else 
+        if check_collisions(b.x, b.y, b.dx, b.dy, false) or check_collisions(b.x, b.y, b.dx, b.dy, true) then
           b.dead = true
-          hit_enemy.health -= player.damage
-          if (hit_enemy.health <= 0) del(enemies, hit_enemy)
+          oneshot_splash(b.x,b.y,true)
+        else
+          hit_enemy = nil
+          for e in all(enemies) do
+            if ((dead_enemy == nil) and abs(b.x - e.x) < 8 and abs(b.y - e.y) < 8) then
+              hit_enemy = e
+            end
+          end
+          if (hit_enemy != nil) then
+            b.dead = true
+            oneshot_splash(b.x,b.y, true)
+            hit_enemy.health -= player.damage
+            if (hit_enemy.health <= 0) del(enemies, hit_enemy)
+          end
         end
       end
     else
@@ -448,6 +453,7 @@ function _update()
     else weaponsprite = 67
     end
     wateranimframes -= 1
+    if wateranimframes==0 then show_effect_text("hydro homie") end
   end
 
   --move screen
@@ -553,7 +559,7 @@ end
 function show_effect_text(text, effect)
   effect_text = text
   effect_text_time = 40
-  effect_text_effect = effect or flr(rnd(4))
+  effect_text_effect = effect or flr(rnd(8))
   sfx(5)
 end
 
@@ -579,7 +585,20 @@ function draw_effect_text()
       end
       print(sub(effect_text,j,j), textx + text_offset + ui_shake_x, texty + ui_shake_y, (effect_text_effect > 1) and (t%2)*7 or 0)
     end
-  end
+  else if(effect_text_effect < 8) then
+    for j=1,#effect_text do --per char
+      text_offset = effect_text_width*(j-1)
+      for i=1,6 do --per copy of char
+        col = (effect_text_effect % 2 == 0) and 8+(i-effect_text_time\2)%6 or 9 --either rainbow or orange
+        if effect_text_time < 33+i and effect_text_time>i then
+          print(sub(effect_text,j,j), textx - i + text_offset + ui_shake_x, texty + i + ui_shake_y, col)
+        end
+      end
+      if effect_text_time < 33 then 
+        print(sub(effect_text,j,j), textx + text_offset + ui_shake_x, texty + ui_shake_y, (effect_text_effect > 5) and (t%2)*7 or 0)
+      end
+    end
+  end end
 end
 
 
@@ -748,7 +767,7 @@ __sfx__
 000100003c670386603665032650306402b6302b630286202762025620216201f6101d6101c6101b6101b6101a6101a61019610196000f6000b60009600086001d60000600006000060026600006000060000600
 01100000290700000000000000002d0700000000000000002b0700000029070000002607000000240700000022070000001c0701d070000000000000000000000000000000000000000000000000000000000000
 010500001875024750307501874024740307401873024730307301872024720307201871024710307103071500000000030000000000000000000000000000000000000000000000000000000000000000000000
-000300001e64022650256501f6400e6300c63011630156201b620176200f6200a61007610076100a6100161000610006000060001600016000060001600006000060000000000000000000000000000000000000
+000300001e61022620256201f6200e6200c61011610156101b610176100f6100a61007610076100a6100161000610006000060001600016000060001600006000060000000000000000000000000000000000000
 010700000000000000146101f6102461023610256102261024610266102361026610226101c6101e6101861012610086100360000600016000160000600237003b600027002e7003670033600006000000000000
 01100000189501895018950189521895200000000001a9501a9501a9521b9501b9501b9521b9521b95200000189501895018950189501895000000000001b9501b9501b9501a9501a9501a9501a9501a95000000
 011000100ca500ca5039b1339b131bb501bb5034b130da400da5034b101ab501ab501ab5034b100ea5034b1000000000000000000000000000000000000000000000000000000000000000000000000000000000
