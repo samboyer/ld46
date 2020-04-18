@@ -215,7 +215,7 @@ function water_plants()
   }
 
   for f in all(flowers) do
-    if (distance(water, f) < 7) then
+    if (distance(water, f) < 9) then
       f.health = min(f.health + 80, f.maxhealth)
     end
   end
@@ -301,8 +301,8 @@ function add_flower_patch(x, y, num)
   sprites = {}
   for i=1,num do
     add(sprites, {
-      x = x + flr(rnd(16)) - 8,
-      y = y + flr(rnd(16)) - 8,
+      x = x + flr(rnd(16)) - 12,
+      y = y + flr(rnd(16)) - 12,
       alivesprite = 6,
       sprite = 6
     })
@@ -414,7 +414,7 @@ function update_bullets()
               del(enemies, hit_enemy)
               kills += 1
               score += hit_enemy.maxhealth * killscorescaler
-              if (rnd(1) < 0.1) show_effect_text("yaass slayy")  
+              if (rnd(1) < 0.1) show_effect_text("yaass slayy")
             end
           end
         end
@@ -479,7 +479,7 @@ function _update()
     else weaponsprite = 67
     end
     wateranimframes -= 1
-    if wateranimframes==0 then 
+    if wateranimframes==0 then
       if(rnd(1) < 0.3) show_effect_text("hydro homie")
     end
   end
@@ -555,9 +555,9 @@ function _draw()
 
   --bloomguy
   isfacingdown = mousey >= player.y - screeny
-  if playerstill then 
+  if playerstill then
     player.sprite = (isfacingdown and 96 or 100) + max((t \ 4)%6-2,0)
-  else 
+  else
     player.sprite = (isfacingdown and 80 or 82) + (t \ 5)%2
   end
   draw_object(player)
@@ -597,6 +597,14 @@ function _draw()
 
   score=t --TEMP
   t+=1
+
+  -- DEBUG
+  -- waterx = player.x + (isweaponfacingleft and (-12) or 20)
+  -- watery = player.y + 8
+  -- circ(waterx-screenx, watery-screeny, 6, 5)
+  -- for f in all(flowers) do
+    -- circ(f.x-screenx, f.y-screeny, 3, 0)
+  -- end
 
   --cls() -- clear screen
   --map(112,0)
