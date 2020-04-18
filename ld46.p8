@@ -359,7 +359,11 @@ screeny = 0
 screenborder = 32 -- how close guy can get before moving screen
 worldsizex = 256 --size of arena in pixels
 worldsizey = 256
-bulletSpeed = 0.5
+bulletspeed = 0.5
+
+--EFFECTS
+screen_shake = 0
+screen_shake_decay = 1
 
 cls() -- clear screen
 
@@ -476,23 +480,35 @@ function _update()
   screenx = min(max( screenx + max(pxs-128+screenborder,0) - max(screenborder-pxs,0) ,0), worldsizex-128)
   screeny = min(max( screeny + max(pys-128+screenborder,0) - max(screenborder-pys,0) ,0), worldsizey-128)
 
+  --update effects
+  screen_shake_x = rnd(screen_shake*2) - screen_shake
+  screen_shake_y = rnd(screen_shake*2) - screen_shake
+  screen_shake = max(screen_shake - screen_shake_decay, 0)
+end
+
+function draw_sprite(spriteno, x, y, flip_x)
+  flip_x = flip_x or false
+  spr(spriteno, x - screenx + screen_shake_x, y - screeny + screen_shake_y, 1, 1, flip_x)
 end
 
 function _draw()
-  ox = screenx%8
-  oy =  screeny%8
-  map((screenx-ox)/8,(screeny-oy)/8,-ox,-oy)
+  sx = screenx - screen_shake_x
+  sy = screeny - screen_shake_y
+  ox = sx%8
+  oy =  sy%8
+  map((sx-ox)/8,(sy-oy)/8,-ox,-oy)
 
   pxs = player.x - screenx
   pys = player.y - screeny
-  spr(64, pxs, pys) --player
+  --spr(64, pxs, pys) --player
+  draw_sprite(64, player.x, player.y)
   if mousex <= pxs
-  then spr(65, pxs - 8, pys) --right hand
-  else spr(65, pxs + 8, pys, 1,1, true) --left hand
+  then draw_sprite(65, player.x - 8, player.y) --right hand
+  else draw_sprite(65, player.x + 8, player.y, true) --left hand
   end
 
   for b in all(bullets) do
-    spr(32+b[5], b[1]-screenx, b[2]-screeny)
+    draw_sprite(32+b[5], b[1], b[2])
   end
 
   if oldclick then ret = 17 else ret = 16 end
