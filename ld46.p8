@@ -271,7 +271,6 @@ end
 --SETUP
 pal(13,139,1) --palette recolouring
 pal(2,131,1)
-poke(0x5F2D, 1) --enable mouse
 cls() -- clear screen
 
 --CONSTANTS/CONFIG
@@ -755,7 +754,7 @@ function start_game(frommenu)
   wave_spawntimeend = -1
 
   --place flowers
-  add_flower_patch(192, 128, flr(rnd(5))+20, 25, 200) --place patch in center, TODO higher health
+  add_flower_patch(192, 128, flr(rnd(5))+20, 25, 200) --place patch in center
 
   for i=1,9 do
     local centerx, centery = get_random_point(false, true)
@@ -1000,8 +999,10 @@ function _update()
       if btnp(5) then
         if (controlsshowing and startcountdown == nil) then
           startcountdown = startcountdownframes
+          music(-1)
           sfx(22)
           sfx(23)
+          poke(0x5F2D, 1) --enable mouse
           kill_doomfire()
         else controlsshowing = true end
       end
