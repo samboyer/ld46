@@ -25,7 +25,6 @@ function update_particles() --used to be _update60
 end
 function draw_particles() --used to be _draw
  foreach(particles, draw_particle)
- --print(stat(7), 0, 0, 7)
  --print(#particles, 0, 92, 7)
 end
 -- Axis are from 0 to 1
@@ -103,9 +102,9 @@ end
 --  local _vy = cos(_r) * -0.008
 --  make_particle(axis(0.5, _vx), axis(0.5, _vy, 0.0003), {33, 8}, axis(), 30+rnd(20))
 -- end
--- function demo_emitter_fireflies()
---  make_particle(axis(0.4+rnd(0.2)), axis(0.4+rnd(0.2), rnd(0.001)+0.001), {35, 8}, {36+flr(rnd(3.99)), 16}, 600)
--- end
+function demo_emitter_fireflies()
+ make_particle(axis(0.4+rnd(0.2)), axis(0.4+rnd(0.2), rnd(0.001)+0.001), {35, 8}, {36+flr(rnd(3.99)), 16}, 600)
+end
 -- function demo_emitter_dome()
 --  make_particle(axis(0.5), axis(0.5, -0.008, 0.00026), {34, 8}, axis(rnd(0.5)-0.25), 60)
 -- end
@@ -133,10 +132,37 @@ function oneshot_splash(worldx,worldy, extrafx)
 
 -- END PARTICLE SYSTEM
 
+--doomfire by fernandojsg (slightly altered)
+--for x=0,d do s(x) end
+--poke(0x5f2c,3)
+df_f={}df_p={0,1,1,4,8,9,10,7}df_w=64
+df_d=df_w*df_w
+function df_s(df_t)
+  df_e=df_f[df_t]
+  df_i=flr(rnd(3))
+  df_f[df_t-df_i+1-df_w]=df_e-band(df_i,1)
+end
+for df_i=0,df_d do df_f[df_i]=df_i>df_d-df_w and 8 or 0 end
+function draw_doomfire()
+  for df_x=0,df_w do for df_y=0,df_w-1 do df_s(df_y*df_w+df_x) end end
+  --for x=0,d do pset(x%w,flr(x/w),p[f[x]]) end
+  for df_x=0,df_d do 
+    xx = df_x%df_w
+    yy = flr(df_x/df_w)
+    --pset(2*xx,2*yy,p[f[x]])
+    rectfill(2*xx,2*yy,2*xx+2,2*yy+2,df_p[df_f[df_x]])
+  end
+end
+function reset_doomfire()
+  df_f={}
+  for df_i=0,df_d do df_f[df_i]=df_i>df_d-df_w and 8 or 0 end
+end
+--END DOOMFIRE
+
+
 function magnitude(x,y)
   return sqrt(x*x+y*y)
 end
-
 
 function get_dir8(dx,dy)
   local ratio = abs(dx)/abs(dy)
@@ -157,6 +183,19 @@ function lerp(a,b,t)
   return (1-t) * a + t * b;
 end
 
+function print_outline(s, x,y, col, colout)
+  colout = colout or 0
+  print(s,x-1,y-1,colout)
+  print(s,x-1,y,colout)
+  print(s,x-1,y+1,colout)
+  print(s,x,y-1,colout)
+  print(s,x,y+1,colout)
+  print(s,x+1,y-1,colout)
+  print(s,x+1,y,colout)
+  print(s,x+1,y+1,colout)
+
+  print(s,x,y,col)
+end
 
 -->8
 --
@@ -393,6 +432,7 @@ function open_menu()
   gamerunning = false
   controlsshowing = false
   music(-1) --TODO menu music
+  reset_doomfire()
 end
 
 function start_game()
@@ -616,125 +656,152 @@ function draw_enemies()
   end
 end
 
+function draw_lava()
+  rectfill(0,0,127,127,10)
+  --map(51,10)
+  for i=0,127 do
+      for iters=0,10 do
+        ii = i + iters*10-t/10
+
+        local y= sin(t/53+iters/7)*sin(ii/32)*4 + i%2*0.4
+        
+        --local w=(cos((i+t)/64+iters/4)*0.5+1)*5
+        w=5
+        local offset = 12.5*iters
+        rectfill(i,offset-w+y,i,offset+w+y, 9)
+      end
+  end
+end
+
+
 function _draw()
-  sx = screenx - screen_shake_x
-  sy = screeny - screen_shake_y
-  ox = sx%8
-  oy =  sy%8
-  map((sx-ox)/8,(sy-oy)/8,-ox,-oy)
-
-  --flowers
-  for f in all(flowers) do
-    for s in all(f.sprites) do
-      s.sprite = (f.health == 0) and 22 or s.alivesprite
-      draw_object(s)
+  if not (gamerunning or gameover) then
+    cls()
+    draw_doomfire()
+    map(112,0)
+    print("eternal",51,58, 9)
+    print("eternal",51,57, 7)
+    if controlsshowing then 
+      controlsstr = "controls:\n\x8b\x94\x91\x83/esdf: move\nlmb: shoot soaker\n\x8e : water plants\n\ndon't let the flowers die!"
+      print_outline(controlsstr, 18,70,7)
+      if (t%40<20) print_outline("press \x97 to begin",31,110, 7) --1s on, 1s off
+    else if (t%40<20) print_outline("press \x97",48,100, 7) --1s on, 1s off
     end
-  end
 
-  draw_enemies()
-
-  --bloomguy
-  isfacingdown = mousey >= player.y - screeny
-  if playerstill then
-    player.sprite = (isfacingdown and 96 or 100) + max((t \ 4)%6-2,0)
   else
-    player.sprite = (isfacingdown and 80 or 82) + (t \ 5)%2
-  end
-  draw_object(player)
-
-  --weapon
-  isweaponfacingleft = mousex <= player.x - screenx
-  if isweaponfacingleft then --right hand
-    draw_sprite(weaponsprite, player.x - 8, player.y)
-    weapontipx = player.x - 5
-  else
-    draw_sprite(weaponsprite, player.x + 8, player.y, true) --left hand
-    weapontipx = player.x + 13
-  end
-  weapontipy = player.y + 4
-
-  --bullets
-  for b in all(bullets) do
-    if (not b.dead) draw_object(b)
-  end
-
-  update_particles()
-  draw_particles()
-
-  --world-space flower healthbars
-  for f in all(flowers) do
-    if gamerunning and f.health < f.maxhealth then 
-      x0, y0 = world_to_screen_coords(f.x - 8,f.y - 9)
-      x1,y1 = world_to_screen_coords(f.x + 8,f.y - 8)
-      --rect(x0,y0,x1,y1, 7) --health bar
-      frac = f.health/f.maxhealth
-      col = (frac<0.5) and 8 or 9
-      rectfill(x0, y0, lerp(x0,x1, frac), y1, col)
-    end
-  end
+    draw_lava()
+    
+    sx = screenx - screen_shake_x
+    sy = screeny - screen_shake_y
+    ox = sx%8
+    oy =  sy%8
+    map((sx-ox)/8,(sy-oy)/8,-ox,-oy)
   
-  --UI
-  if gamerunning then
-    if oldclick then ret = 17 else ret = 16 end
-    spr(ret, mousex-3+ui_shake_x, mousey-3+ui_shake_y)
-
-    print("score: "..flr(score), 2+ui_shake_x,2+ui_shake_y, 7)
-    spr(46, 2+ui_shake_x,110+ui_shake_y, 2,2)
-    rect(20,115, 122,122, 7) --health bar
-    col = (health>30) and 14 or 8
-    rectfill(21+ui_shake_x,116+ui_shake_y, lerp(20, 121, health/100)+ui_shake_x,121+ui_shake_y, col)
-
-    spr(45, 105+ui_shake_x,1+ui_shake_y)--kills
-    print(kills, 115+ui_shake_x,2+ui_shake_y, 7)
-
-    --weakest flower direction
-    if weakest_flower != nil then
-      local dx = weakest_flower.x - player.x
-      local dy = weakest_flower.y - player.y
-      local mag = magnitude(dx,dy)*0.2
-
-      dir = get_dir8(dx, dy)
-      --flash arrow when health v low
-      if(health>40 or (health>15 and t%8>3) or (health<=15 and t%4>1)) spr(120 + dir, 7+dx/mag, 114+dy/mag)
-    end
-  end
-
-  --draw enemy indicators
-  for e in all(enemies) do
-    if (not e.dead) then
-      ex = e.x - screenx - 64
-      ey = e.y - screeny - 64
-      if abs(ex)>64 or abs(ey)>64 then
-        dir = get_dir8(e.x - screenx - 64, e.y - screeny - 64)
-        draw_arrow(e, dir)
+    --flowers
+    for f in all(flowers) do
+      for s in all(f.sprites) do
+        s.sprite = (f.health == 0) and 22 or s.alivesprite
+        draw_object(s)
       end
     end
-  end
-
-  if (effect_text_time > 0) draw_effect_text();
-
-  t+=1
-
-  if not gamerunning then
+  
+    draw_enemies()
+  
+    --bloomguy
+    isfacingdown = mousey >= player.y - screeny
+    if playerstill then
+      player.sprite = (isfacingdown and 96 or 100) + max((t \ 4)%6-2,0)
+    else
+      player.sprite = (isfacingdown and 80 or 82) + (t \ 5)%2
+    end
+    draw_object(player)
+  
+    --weapon
+    isweaponfacingleft = mousex <= player.x - screenx
+    if isweaponfacingleft then --right hand
+      draw_sprite(weaponsprite, player.x - 8, player.y)
+      weapontipx = player.x - 5
+    else
+      draw_sprite(weaponsprite, player.x + 8, player.y, true) --left hand
+      weapontipx = player.x + 13
+    end
+    weapontipy = player.y + 4
+  
+    --bullets
+    for b in all(bullets) do
+      if (not b.dead) draw_object(b)
+    end
+  
+    update_particles()
+    draw_particles()
+  
+    --world-space flower healthbars
+    for f in all(flowers) do
+      if gamerunning and f.health < f.maxhealth then 
+        x0, y0 = world_to_screen_coords(f.x - 8,f.y - 9)
+        x1,y1 = world_to_screen_coords(f.x + 8,f.y - 8)
+        --rect(x0,y0,x1,y1, 7) --health bar
+        frac = f.health/f.maxhealth
+        col = (frac<0.5) and 8 or 9
+        rectfill(x0, y0, lerp(x0,x1, frac), y1, col)
+      end
+    end
+    
+    --UI
+    if gamerunning then
+      if oldclick then ret = 17 else ret = 16 end
+      spr(ret, mousex-3+ui_shake_x, mousey-3+ui_shake_y)
+  
+      print("score: "..flr(score), 2+ui_shake_x,2+ui_shake_y, 7)
+      spr(46, 2+ui_shake_x,110+ui_shake_y, 2,2)
+      rect(20,115, 122,122, 7) --health bar
+      col = (health>30) and 14 or 8
+      rectfill(21+ui_shake_x,116+ui_shake_y, lerp(20, 121, health/100)+ui_shake_x,121+ui_shake_y, col)
+  
+      spr(45, 105+ui_shake_x,1+ui_shake_y)--kills
+      print(kills, 115+ui_shake_x,2+ui_shake_y, 7)
+  
+      --weakest flower direction
+      if weakest_flower != nil then
+        local dx = weakest_flower.x - player.x
+        local dy = weakest_flower.y - player.y
+        local mag = magnitude(dx,dy)*0.2
+  
+        dir = get_dir8(dx, dy)
+        --flash arrow when health v low
+        if(health>40 or (health>15 and t%8>3) or (health<=15 and t%4>1)) spr(120 + dir, 7+dx/mag, 114+dy/mag)
+      end
+    end
+  
+    --draw enemy indicators
+    for e in all(enemies) do
+      if (not e.dead) then
+        ex = e.x - screenx - 64
+        ey = e.y - screeny - 64
+        if abs(ex)>64 or abs(ey)>64 then
+          dir = get_dir8(e.x - screenx - 64, e.y - screeny - 64)
+          draw_arrow(e, dir)
+        end
+      end
+    end
+  
+    if (effect_text_time > 0) draw_effect_text();
+  
+    
     if gameover then
       effect_text_time = 1 --infinite text effect
 
       if (t%40<20) print("press \x97 to restart\n\n press \x8e for menu",31,64, 7) --1s on, 1s off
-    else --MENU SCREEN
-      map(112,0)
-      print("eternal",51,58, 9)
-      print("eternal",51,57, 7)
-      if controlsshowing then 
-        controlsstr = "controls:\n\x8b\x94\x91\x83/esdf: move\nlmb: shoot soaker\n\x8e : water plants\n\ndon't let the flowers die!"
-        print(controlsstr, 18,70,7)
-        if (t%40<20) print("press \x97 to begin",31,110, 7) --1s on, 1s off
-      else if (t%40<20) print("press \x97",48,100, 7) --1s on, 1s off
-      end
     end
+
   end
+
+  t+=1
 
   -- DEBUG
   print(flr(stat(1)*100) .. "% CPU",0,16,7)
+  print(stat(7).." fps", 0, 24, 7)
+
   -- waterx = player.x + (isweaponfacingleft and (-12) or 20)
   -- watery = player.y + 8
   -- circ(waterx-screenx, watery-screeny, 6, 5)
@@ -845,7 +912,6 @@ generic_texts = {
   "hey! listen!",
   "owo what's this",
   "you are a saucy boy",
-  "ee urr",
 }
 
 gameover_texts = {
@@ -856,6 +922,7 @@ gameover_texts = {
   "flower says goodbye",
   "bloom-slain",
   "omae wa mou shindeiru",
+  "you are not a saucy boy",
   "\"everything not saved will be lost\"",
   "you lose (the flowers)",
 }
@@ -869,14 +936,14 @@ __gfx__
 00700700000444004444424444444444007a70004444424400000e00ffffffffffffff33ffffff33ffffffff33ffffff33ffffff33ffffffffffffffffffff33
 07000070000999004444444444444444000700004444444400000300ffffffffffffff33ffffff33ffffffff33ffffff33ffffff333333333333333333333333
 00000000000f0f004444444444444444000b00004444444400000b00ffffffffffffff33ffffff33ffffffff33ffffff33ffffff333333333333333333333333
-0000000000000000000000000000000000000000000000000000000033333333dd3dddddfffffffdffffffffd3dddd3d3dddd3ddfff3dddd0000000000000000
-060006000c000c00000000000000000000000000000000000000000033333333dd3dd3ddffffffddddffffffd3dd3d3dfd3dd3d3fdd3d3dd0000000000000000
-0060600000c0c000000000000000000000000000000000000000000033333333ddddd3ddfffffdd33dddffffdddd3ddfff3dddd3fdddd3dd0000000000000000
-0000000000000000000000000000000000000000000000000000000033333333d3ddddd3fffffdd33d3ddfffddfffffffffddd3dd3ddddd30000000000000000
-0060600000c0c000000000000000000000000000000000000000400033333333d3ddddd3ffffdddddd3d3dff3dfffffffffd3d3dd3ddddd30000000000000000
-060006000c000c00000000000000000000000000000000000004740033333333ddd3ddddfffdd3dddddd3dff3fffffffffff3dd3ddd3dddd0000000000000000
-00000000000000000000000000000000000000000000000000004300333333333dd3dd3dffd3d3d3d3dddd3fdfffffffffffffd33dd3dd3d0000000000000000
-00000000000000000000000000000000000000000000000000000b00333333333ddddd3d3dd3ddd3d3dddd3ffffffffffffffffd3ddddd3d0000000000000000
+0000000000000000000000000000000000000000000000000000000000000000dd3dddddfffffffdffffffffd3dddd3d3dddd3ddfff3dddd0000000000000000
+060006000c000c0000000000000000000000000000000000000000000000000fdd3dd3ddffffffddddffffffd3dd3d3dfd3dd3d3fdd3d3dd0000000000000000
+0060600000c0c00000000000000000000000000000000000000000000000000fddddd3ddfffffdd33dddffffdddd3ddfff3dddd3fdddd3dd0000000000000000
+000000000000000000000000000000000000000000000000000000000000000fd3ddddd3fffffdd33d3ddfffddfffffffffddd3dd3ddddd30000000000000000
+0060600000c0c00000000000000000000000000000000000000040000000000fd3ddddd3ffffdddddd3d3dff3dfffffffffd3d3dd3ddddd30000000000000000
+060006000c000c0000000000000000000000000000000000000474000000000fddd3ddddfffdd3dddddd3dff3fffffffffff3dd3ddd3dddd0000000000000000
+00000000000000000000000000000000000000000000000000004300000000003dd3dd3dffd3d3d3d3dddd3fdfffffffffffffd33dd3dd3d0000000000000000
+00000000000000000000000000000000000000000000000000000b00000000003ddddd3d3dd3ddd3d3dddd3ffffffffffffffffd3ddddd3d0000000000000000
 00000000000c70000000000000c0c00000000000000c70000000000000c0c000000000000000000000000000000000000000000070000007000000eeee000000
 0000000000cc7000000000000000c0000000000000cc70000000000000cc000000000000000000000000000000000000000000000777777000000eeeeee00000
 c00cc77000ccc0000cc770c0000c00000c0c777000ccc0000cc77007000cc00000000000000000000000000000000000000000000766766000000eeeeee00000
