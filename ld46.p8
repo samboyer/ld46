@@ -301,6 +301,7 @@ screenx = screenstartx --camera position
 screeny = screenstarty
 screen_shake = 0
 weapontipx = 0
+weapontipy = 0
 isweaponfacingleft = false
 isfacingdown = true
 oldenemycount = -1
@@ -449,6 +450,9 @@ function cooldown_powerups()
   end
 end
 
+inputx=0
+inputy=0
+
 function control_player()
   x = 0
   y = 0
@@ -458,11 +462,16 @@ function control_player()
       start_wateringcan()
     end
 
+    inputx=0
+    inputy=0
+    if (btn(0,0) or btn(0,1)) inputx -= 1
+    if (btn(1,0) or btn(1,1)) inputx += 1
+    if (btn(2,0) or btn(2,1)) inputy -= 1
+    if (btn(3,0) or btn(3,1)) inputy += 1
+
     if wateranimframes == 0 then
-      if (btn(0,0) or btn(0,1)) x -= 1
-      if (btn(1,0) or btn(1,1)) x += 1
-      if (btn(2,0) or btn(2,1)) y -= 1
-      if (btn(3,0) or btn(3,1)) y += 1
+      x=inputx
+      y=inputy
     end
   end
   playerstill = x==0 and y==0
@@ -900,8 +909,13 @@ function _update()
 
   update_health()
 
+  isweaponfacingleft = mousex <= player.x - screenx
+  isfacingdown = mousey >= player.y - screeny
+
   if wateranimframes > 0 then
     update_wateringcan()
+    if (inputx!=0) isweaponfacingleft = inputx<=0
+    if (inputy!=0) isfacingdown = inputy>=0
   end
 
   if gamerunning then
@@ -1028,7 +1042,6 @@ function draw_player()
   end
 
   --bloomguy
-  isfacingdown = mousey >= player.y - screeny
   if playerstill then
     player.sprite = (isfacingdown and 96 or 100) + max((t \ 4)%6-2,0)
   else
@@ -1044,7 +1057,7 @@ function draw_player()
     else weaponsprite = 67
     end
   end
-  isweaponfacingleft = mousex <= player.x - screenx
+
   if isweaponfacingleft then --right hand
     if (weaponsprite != nil) then
       draw_sprite(weaponsprite, player.x - 8, player.y)
