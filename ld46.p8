@@ -10,6 +10,18 @@ __lua__
 -- 0x1 COLLIDABLE
 
 
+-- PICO-tween
+function outCubic(t, b, c, d)
+  a = t / d - 1
+  return c * (a*a*a + 1) + b
+end
+
+function outQuart(t, b, c, d)
+  a = t / d - 1
+  return -c * (a*a*a*a - 1) + b
+end
+
+
 -- Particle System by fililou
 particles = {}
 emitters = {}
@@ -261,7 +273,8 @@ player = {
   default_weapon = {
     sprite = 65,
     damage = 50,
-    cooldown = 20,
+    cooldown = 15,
+    shake = 3,
     lifetime = nil
   },
   weapon = nil,
@@ -305,7 +318,8 @@ available_powerups = {
       sprite = 69,
       damage = 20,
       cooldown = 4,
-      lifetime = 120
+      lifetime = 150,
+      shake = 3,
     }
   },
   {
@@ -318,7 +332,8 @@ available_powerups = {
       sprite = 70,
       damage = 200,
       cooldown = 40,
-      lifetime = 120
+      lifetime = 150,
+      shake = 25,
     }
   },
   {
@@ -372,12 +387,13 @@ end
 
 function update_wateringcan()
   water = {
-    x = player.x + (isweaponfacingleft and (-12) or 20),
+    x = player.x + (isweaponfacingleft and (-8) or 16),
     y = player.y + 8
   }
+  circ()
 
   for f in all(flowers) do
-    if (distance(water, f) < 9) then
+    if (distance(water, f) < 12) then
       watersuccess = true
       f.health = min(f.health + wateringcan_healperframe, f.maxhealth)
     end
@@ -519,14 +535,17 @@ function update_mouse()
   oldclick = lmbdown
 end
 
-function add_flower_patch(x, y, num)
+function add_flower_patch(x, y, num, radius, health)
+  radius = radius or 12
+  health = health or 100
   sprites = {}
   mainflower = flr(rnd(4)) + 2
   for i=1,num do
     sprite = (rnd(1) < 0.2) and flr(rnd(4)) + 2 or mainflower
+    local xx, yy = get_random_point_around(x,y, radius)
     add(sprites, {
-      x = x + flr(rnd(16)) - 12,
-      y = y + flr(rnd(16)) - 12,
+      x = xx,
+      y = yy,
       alivesprite = sprite,
       sprite = sprite,
       flip_x = (rnd(1) < 0.5)
@@ -535,8 +554,8 @@ function add_flower_patch(x, y, num)
   add(flowers, {
     x = x,
     y = y,
-    health = 100,
-    maxhealth = 100,
+    health = health,
+    maxhealth = health,
     sprites = sprites
   })
 end
@@ -614,8 +633,8 @@ function get_random_point(offscreen, onground)
   onground = onground or false
   local x,y=0,0
   repeat
-    x = flr(rnd(worldsizex-24))+8
-    y = flr(rnd(worldsizey-24))+8
+    x = flr(rnd(worldsizex-32))+16
+    y = flr(rnd(worldsizey-32))+16
     allowed=true
     if(offscreen) allowed = allowed and (x<screenx or x>screenx+128 or y<screeny or y>screeny+128)
     if(onground) allowed = allowed and is_onground(x,y)
@@ -664,7 +683,7 @@ function start_game()
   wave_spawntimeend = -1
 
   --place flowers
-  add_flower_patch(192, 128, flr(rnd(8))+10) --place patch in center TODO make bigger, higher health
+  add_flower_patch(192, 128, flr(rnd(5))+20, 25, 200) --place patch in center, TODO higher health
 
   for i=1,9 do
     local centerx, centery = get_random_point(false, true)
@@ -703,7 +722,7 @@ function add_bullet()
   })
 
   random_effect_text(shoot_texts, 0.05)
-  screen_shake = 3
+  screen_shake = player.weapon.shake
 end
 
 function update_bullets()
@@ -858,8 +877,12 @@ function _update()
       --end the game
       music(51)
       gamerunning = false
-      show_effect_text(gameover_texts[flr(rnd(#gameover_texts))+1], nil, false) --don't play sound, choose random effect
       gameover = true --must come after show text effect
+      t_die = 0
+      oldscreenx = screenx
+      oldscreeny = screeny
+      dstscreenx = weakest_flower.x - screenx-64
+      dstscreeny = weakest_flower.y - screeny-64
     end
 
     --move screen
@@ -942,20 +965,24 @@ end
 
 oldplayerposes = {{1000,1000},{1000,1000},{1000,1000},{1000,1000}}
 oldpos = {1000,1000}
+
 function draw_player()
 
   --ghosts (if speed boost active)
   oldpos = {player.x, player.y}
+  local show_ghosts = false
   for p in all(active_powerups) do
-    if p.name == "speed boost" then
-      --draw ghosts
-      for i=4,1,-1 do
-        draw_sprite(84, oldplayerposes[i][1], oldplayerposes[i][2])
-        if i==1 then --update chost
-          oldplayerposes[i] = oldpos
-        else
-          oldplayerposes[i] = oldplayerposes[i-1]
-        end
+    if (p.name == "speed boost") show_ghosts = true
+  end
+
+  if show_ghosts then
+    --draw ghosts
+    for i=4,1,-1 do
+      draw_sprite(84, oldplayerposes[i][1], oldplayerposes[i][2])
+      if i==1 then --update chost
+        oldplayerposes[i] = oldpos
+      else
+        oldplayerposes[i] = oldplayerposes[i-1]
       end
     end
   end
@@ -1118,9 +1145,15 @@ function _draw()
 
 
     if gameover then
-      effect_text_time = 1 --infinite text effect
-
-      if (t%40<20) print("press \x97 to restart\n\n press \x8e for menu",31,64, 7) --1s on, 1s off
+      t_die +=1
+      if(t_die<=50) then
+        screenx = outCubic(t_die, oldscreenx, dstscreenx, 50)
+        screeny = outCubic(t_die, oldscreeny, dstscreeny, 50)
+        if(t_die==50) show_effect_text(gameover_texts[flr(rnd(#gameover_texts))+1], nil, true)
+      else
+        effect_text_time = max(effect_text_time,1) --infinite text effect
+        if (t_die%40<20) print("press \x97 to restart\n\n press \x8e for menu",31,100, 7) --1s on, 1s off
+      end
     end
 
   end
@@ -1133,11 +1166,11 @@ function _draw()
   --print("time "..time, 0, 36, 7)
   --print("wave_timetilnextspawn "..wave_timetilnextspawn, 0, 64, 7)
 
-  -- waterx = player.x + (isweaponfacingleft and (-12) or 20)
+  -- waterx = player.x + (isweaponfacingleft and (-8) or 16)
   -- watery = player.y + 8
-  -- circ(waterx-screenx, watery-screeny, 6, 5)
+  -- circ(waterx-screenx, watery-screeny, 9, 5)
   -- for f in all(flowers) do
-    -- circ(f.x-screenx, f.y-screeny, 3, 0)
+  --   circ(f.x-screenx, f.y-screeny, 3, 0)
   -- end
 end
 
@@ -1158,13 +1191,13 @@ function random_effect_text(list, chance)
   if (rnd(1) < chance) show_effect_text(list[flr(rnd(#list))+1])
 end
 
-function show_effect_text(text, effect, playsfx)
-  if(gameover) return
+function show_effect_text(text, effect, deathtext)
+  if(gameover and not deathtext) return
   if(playsfx==nil) playsfx = true
   effect_text = text
   effect_text_time = 40
   effect_text_effect = effect or flr(rnd(effect_count))
-  if(playsfx) sfx(5)
+  if(not deathtext) sfx(5)
 end
 
 effect_text = nil
