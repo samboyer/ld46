@@ -1267,8 +1267,7 @@ gameover_texts = {
   "\"everything not saved will be lost\"",
   "you lose (the flowers)",
   "omae wa mo shindeiru",
-  "f",
-  "sam is a poopoo"
+  "f"
 }
 
 __gfx__
