@@ -222,6 +222,7 @@ t = 0 --frame count
 weaponsprite = 65 --sprite for current weapon held
 gamerunning = false --is gameplay allowed?
 gameover = false --discerns between menu and you died screen
+controlsshowing = false --discerns between title screen and controls screen
 
 function distance(o1, o2)
   dx = o1.x - o2.x
@@ -264,7 +265,7 @@ function control_player()
   y = 0
 
   if gamerunning then 
-    if btn(4) and wateranimframes == 0 then
+    if btnp(4) and wateranimframes == 0 then
       water_plants()
     end
 
@@ -378,9 +379,19 @@ function add_enemy(x, y)
   add(enemies, e)
 end
 
+function spawn_enemy_offscreen()
+  repeat
+    enemyx = flr(rnd(worldsizex-24))+8
+    enemyy = flr(rnd(worldsizey-24))+8
+  until( enemyx<screenx or enemyx>screenx+128
+    or enemyy<screeny or enemyy>screeny+128)
+  add_enemy(enemyx, enemyy)
+end
+
 function open_menu()
   gameover = false
   gamerunning = false
+  controlsshowing = false
   music(-1) --TODO menu music
 end
 
@@ -394,7 +405,7 @@ function start_game()
   enemies = {}
   t=0
   score=0
-  kill=0
+  kills=0
 
   --place flowers
   add_flower_patch(192, 128, flr(rnd(8))+10) --place patch in center TODO make bigger, higher health
@@ -403,15 +414,6 @@ function start_game()
     centerx = flr(rnd(worldsizex-32))+16
     centery = flr(rnd(worldsizey-32))+16
     add_flower_patch(centerx, centery, flr(rnd(5))+6)
-  end
-  --TEMP
-  for i=1,5 do
-    repeat
-      enemyx = flr(rnd(worldsizex-24))+8
-      enemyy = flr(rnd(worldsizey-24))+8
-    until( enemyx<screenx or enemyx>screenx+128
-      or enemyy<screeny or enemyy>screeny+128)
-    add_enemy(enemyx, enemyy)
   end
 
   gamerunning = true
@@ -492,7 +494,9 @@ function update_enemies()
   for e in all(enemies) do
     if (not e.dead and e.target != nil) then
       targetdist = distance(e, e.target)
-      if (targetdist > e.attackdist) then
+      e.moving = (targetdist > e.attackdist)
+      e.flip_x = e.target.x < e.x
+      if e.moving then
         --show_effect_text(""..targetdist)
         e.x += (e.maxspd / targetdist) * (e.target.x - e.x)
         e.y += (e.maxspd / targetdist) * (e.target.y - e.y)
@@ -550,9 +554,11 @@ function _update()
       --end the game
       music(56)
       gamerunning = false
-      gameover = true
       show_effect_text(gameover_texts[flr(rnd(#gameover_texts))+1], nil, false) --don't play sound, choose random effect
+      gameover = true --must come after show text effect
     end
+
+    if (t%90==0) spawn_enemy_offscreen()
 
     --move screen
     pxs = player.x - screenx
@@ -561,10 +567,13 @@ function _update()
     screeny = min(max( screeny + max(pys-128+screenborder,0) - max(screenborder-pys,0) ,0), worldsizey-128)
   else
     if gameover then
-      if(btn(5)) start_game()
-      if(btn(4)) open_menu() --go to title screen
-    else
-      if(btn(5)) start_game() --TODO show controls first!
+      if(btnp(5)) start_game()
+      if(btnp(4)) open_menu() --go to title screen
+    else --main menu
+      if btnp(5) then
+        if controlsshowing then start_game() 
+        else controlsshowing = true end
+      end
     end
   end
 
@@ -595,7 +604,14 @@ function draw_arrow(obj, dir)
 end
 
 function draw_enemies()
+  --(Bool and 96 or 100) + max((t \ 4)%6-2,0)
   for e in all(enemies) do
+    if e.moving or gameover then
+      e.sprite = 104 + (t \ 8)%2
+    else
+      e.sprite = 106+ (t \ 3)%5
+    end
+    if(gameover) e.flip_x = (t%26)>=13
     if (not e.dead) draw_object(e)
   end
 end
@@ -707,7 +723,6 @@ function _draw()
     -- circ(f.x-screenx, f.y-screeny, 3, 0)
   -- end
 
-  --cls() -- clear screen
   if not gamerunning then
     if gameover then
       effect_text_time = 1 --infinite text effect
@@ -717,7 +732,12 @@ function _draw()
       map(112,0)
       print("eternal",51,58, 9)
       print("eternal",51,57, 7)
-      if (t%40<20) print("press \x97 to begin",31,100, 7) --1s on, 1s off
+      if controlsshowing then 
+        controlsstr = "controls:\n\x8b\x94\x91\x83/esdf: move\nlmb: shoot soaker\n\x8e : water plants\n\ndon't let the flowers die!"
+        print(controlsstr, 18,70,7)
+        if (t%40<20) print("press \x97 to begin",31,110, 7) --1s on, 1s off
+      else if (t%40<20) print("press \x97",48,100, 7) --1s on, 1s off
+      end
     end
   end
 end
@@ -740,6 +760,7 @@ function random_effect_text(list, chance)
 end
 
 function show_effect_text(text, effect, playsfx)
+  if(gameover) return
   if(playsfx==nil) playsfx = true
   effect_text = text
   effect_text_time = 40
@@ -832,12 +853,11 @@ gameover_texts = {
   "dehydration comes to us all",
   "you had two jobs",
   "flower says goodbye",
-  "bloom slain",
-  "you are a saucy boy",
+  "bloom-slain",
+  "omae wa mou shindeiru",
   "\"everything not saved will be lost\"",
-  "\"you lose (the flowers)\"",
+  "you lose (the flowers)",
 }
-
 
 __gfx__
 0000000000ff0ff044444444bbbbbbbb000000004444444400000000ffffffffffffff3333333333333333333333333333ffffff33ffffffffffffffffffff33
@@ -888,14 +908,14 @@ cc7ccccc000000000000000000000000000000000000000000000000000000000000000000000000
 00533500005335000053350000533500000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00300500005003000030050000500300000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000300003000000000030000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00333d0000333d00000000000000000000333d0000333d0000000000000000000000000000000000000000000000000000000000000000000000000000000000
-031112d0031112d000333d0000333d00033333d0033333d000333d0000333d000000000000000000000000000000000000000000000000000000000000000000
-0031130000311300031112d0031112d00033330000333300033333d0033333d00000000000000000000000000000000000000000000000000000000000000000
-03559530003333000031130003511530035555300033330000333300035335300000000000000000000000000000000000000000000000000000000000000000
-30333303035595300355953030359303303333030355553003555530303553030000000000000000000000000000000000000000000000000000000000000000
-00533500303333033033330300533500005335003033330330333303005335000000000000000000000000000000000000000000000000000000000000000000
-00500500005335000053350000500500005005000053350000533500005005000000000000000000000000000000000000000000000000000000000000000000
-00300300003003000030030000300300003003000030030000300300003003000000000000000000000000000000000000000000000000000000000000000000
+00333d0000333d00000000000000000000333d0000333d0000000000000000005000000550000005559444955594449550000005500000055000000500000000
+031112d0031112d000333d0000333d00033333d0033333d000333d0000333d00059444900594449004a949a004a949a005500005050000500594449000000000
+0031130000311300031112d0031112d00033330000333300033333d0033333d004a949a004a949a004a84a8004a84a80044944490494449004a949a000000000
+035595300033330000311300035115300355553000333300003333000353353004a84a8004a84a800444444004440040044a949a04a949a004a84a8000000000
+303333030355953003559530303593033033330303555530035555303035530304444440044444400444404004440000044a84a804a84a800444444000000000
+00533500303333033033330300533500005335003033330330333303005335000034440000344400003444000034000004444444044444400034440000000000
+00500500005335000053350000500500005005000053350000533500005005000034440000034440003444000034440000344400003444000034440000000000
+00300300003003000030030000300300003003000030030000300300003003003344440003344440334444003344440033444400334444003344440000000000
 00000000000880000000000000000000000888888888800000000000000000000000000000077000000000000000000000077777777770000000000000000000
 00008800008888000088000000000000000088888888000000000000000000000000770000777700007700000000000000007777777700000000000000000000
 00008880088888800888000000000000000008888880000000000000000000000000777007777770077700000000000000000777777000000000000000000000
