@@ -146,7 +146,7 @@ for df_i=0,df_d do df_f[df_i]=df_i>df_d-df_w and 8 or 0 end
 function draw_doomfire()
   for df_x=0,df_w do for df_y=0,df_w-1 do df_s(df_y*df_w+df_x) end end
   --for x=0,d do pset(x%w,flr(x/w),p[f[x]]) end
-  for df_x=0,df_d do 
+  for df_x=0,df_d do
     xx = df_x%df_w
     yy = flr(df_x/df_w)
     --pset(2*xx,2*yy,p[f[x]])
@@ -272,6 +272,18 @@ available_powerups = {
       cooldown = 4,
       lifetime = 120
     }
+  },
+  {
+    sprites = 2,
+    sprite = 70,
+    type = "weapon",
+    contents = {
+      sprites = 2,
+      sprite = 70,
+      damage = 200,
+      cooldown = 40,
+      lifetime = 120
+    }
   }
 }
 
@@ -334,14 +346,12 @@ function update_wateringcan()
 end
 
 function apply_powerup(powerup)
+  contents = {}
+  for k,v in pairs(powerup.contents) do
+    contents[k] = v
+  end
   if (powerup.type == "weapon") then
-    new_weapon = {
-      sprite = powerup.contents.sprite,
-      damage = powerup.contents.damage,
-      cooldown = powerup.contents.cooldown,
-      lifetime = powerup.contents.lifetime
-    }
-    player.weapon = new_weapon
+    player.weapon = contents
   else
     show_effect_text("fix apply_powerup")
   end
@@ -764,7 +774,7 @@ function _draw()
     map(112,0)
     print("eternal",51,58, 9)
     print("eternal",51,57, 7)
-    if controlsshowing then 
+    if controlsshowing then
       controlsstr = "controls:\n\x8b\x94\x91\x83/esdf: move\nlmb: shoot soaker\n\x8e : water plants\n\ndon't let the flowers die!"
       print_outline(controlsstr, 18,70,7)
       if (t%40<20) print_outline("press \x97 to begin",31,110, 7) --1s on, 1s off
@@ -773,13 +783,13 @@ function _draw()
 
   else
     draw_lava()
-    
+
     sx = screenx - screen_shake_x
     sy = screeny - screen_shake_y
     ox = sx%8
     oy =  sy%8
     map((sx-ox)/8,(sy-oy)/8,-ox,-oy)
-  
+
     --flowers
     for f in all(flowers) do
       for s in all(f.sprites) do
@@ -787,14 +797,14 @@ function _draw()
         draw_object(s)
       end
     end
-    
+
     --powerups
     for p in all(powerups) do
       draw_object(p)
     end
-  
+
     draw_enemies()
-  
+
     --bloomguy
     isfacingdown = mousey >= player.y - screeny
     if playerstill then
@@ -803,9 +813,9 @@ function _draw()
       player.sprite = (isfacingdown and 80 or 82) + (t \ 5)%2
     end
     draw_object(player)
-  
+
     --weapon
-    weaponsprite = player.weapon.sprite
+    weaponsprite = (player.weapon.sprites == nil) and player.weapon.sprite or nil
     if wateranimframes > 0 then
       if wateranimframes > 5 and wateranimframes < 25 then
         weaponsprite = 68
@@ -814,25 +824,37 @@ function _draw()
     end
     isweaponfacingleft = mousex <= player.x - screenx
     if isweaponfacingleft then --right hand
-      draw_sprite(weaponsprite, player.x - 8, player.y)
+      if (weaponsprite != nil) then
+        draw_sprite(weaponsprite, player.x - 8, player.y)
+      else
+        for i=1,player.weapon.sprites do
+          draw_sprite(player.weapon.sprite + i - 1, player.x + 8*(i-2), player.y)
+        end
+      end
       weapontipx = player.x - 5
     else
-      draw_sprite(weaponsprite, player.x + 8, player.y, true) --left hand
+      if (weaponsprite != nil) then
+        draw_sprite(weaponsprite, player.x + 8, player.y, true) --left hand
+      else
+        for i=1,player.weapon.sprites do
+          draw_sprite(player.weapon.sprite + i - 1, player.x - 8*(i-2), player.y, true)
+        end
+      end
       weapontipx = player.x + 13
     end
     weapontipy = player.y + 4
-  
+
     --bullets
     for b in all(bullets) do
       if (not b.dead) draw_object(b)
     end
-  
+
     update_particles()
     draw_particles()
-  
+
     --world-space flower healthbars
     for f in all(flowers) do
-      if gamerunning and f.health < f.maxhealth then 
+      if gamerunning and f.health < f.maxhealth then
         x0, y0 = world_to_screen_coords(f.x - 8,f.y - 9)
         x1,y1 = world_to_screen_coords(f.x + 8,f.y - 8)
         --rect(x0,y0,x1,y1, 7) --health bar
@@ -841,33 +863,33 @@ function _draw()
         rectfill(x0, y0, lerp(x0,x1, frac), y1, col)
       end
     end
-    
+
     --UI
     if gamerunning then
       if oldclick then ret = 17 else ret = 16 end
       spr(ret, mousex-3+ui_shake_x, mousey-3+ui_shake_y)
-  
+
       print("score: "..flr(score), 2+ui_shake_x,2+ui_shake_y, 7)
       spr(46, 2+ui_shake_x,110+ui_shake_y, 2,2)
       rect(20,115, 122,122, 7) --health bar
       col = (health>30) and 14 or 8
       rectfill(21+ui_shake_x,116+ui_shake_y, lerp(20, 121, health/100)+ui_shake_x,121+ui_shake_y, col)
-  
+
       spr(45, 105+ui_shake_x,1+ui_shake_y)--kills
       print(kills, 115+ui_shake_x,2+ui_shake_y, 7)
-  
+
       --weakest flower direction
       if weakest_flower != nil then
         local dx = (weakest_flower.x - player.x)/100
         local dy = (weakest_flower.y - player.y)/100
         local mag = magnitude(dx,dy)*0.2
-  
+
         dir = get_dir8(dx, dy)
         --flash arrow when health v low
         if(health>40 or (health>15 and t%8>3) or (health<=15 and t%4>1)) spr(120 + dir, 7+dx/mag, 114+dy/mag)
       end
     end
-  
+
     --draw enemy indicators
     for e in all(enemies) do
       if (not e.dead) then
@@ -879,10 +901,10 @@ function _draw()
         end
       end
     end
-  
+
     if (effect_text_time > 0) draw_effect_text();
-  
-    
+
+
     if gameover then
       effect_text_time = 1 --infinite text effect
 
@@ -927,7 +949,7 @@ function show_effect_text(text, effect, playsfx)
   if(playsfx==nil) playsfx = true
   effect_text = text
   effect_text_time = 40
-  effect_text_effect = effect or flr(rnd(8))
+  effect_text_effect = effect or flr(rnd(effect_count))
   if(playsfx) sfx(5)
 end
 
@@ -935,7 +957,7 @@ effect_text = nil
 effect_text_effect = 0
 effect_text_time = 0
 effect_text_width = 6
-effect_count = 4
+effect_count = 10
 function draw_effect_text()
   effect_text_time -= 1;
 
@@ -965,6 +987,14 @@ function draw_effect_text()
       if effect_text_time < 33 then
         print(sub(effect_text,j,j), textx + text_offset + ui_shake_x, texty + ui_shake_y, (effect_text_effect > 5) and (t%2)*7 or 0)
       end
+    end
+  elseif effect_text_effect < 10 then
+    for j=1,#effect_text do
+      text_offset = effect_text_width*(j-1)
+      offset_x = text_offset
+      offset_y = 0
+      col = fierycolours[1+(t+effect_text_time\2)%#fierycolours]
+      print_outline(sub(effect_text,j,j), textx + offset_x + ui_shake_x, texty + offset_y + ui_shake_y, (effect_text_effect%2 == 0) and 7 or col, (effect_text_effect%2 == 0) and col or 7)
     end
   end
 end
@@ -1023,7 +1053,8 @@ gameover_texts = {
   "\"everything not saved will be lost\"",
   "you lose (the flowers)",
   "omae wa mo shindeiru",
-  "f"
+  "f",
+  "sam is a poopoo"
 }
 
 __gfx__
@@ -1059,13 +1090,13 @@ cc7ccccc000000000000000000000000000000000000000000000000000000000000000000000000
 1c1111c10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000eeeeee0eeeeee0
 111c1c110000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000eeeeee00eeeee0
 11c111c100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000eee0000eeee00
-0000000000000000eeeeeeee00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-000000000000bbb0eeeeeeee00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-000000000000bbb0eeeeeeee00006000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000009ccccceeeeeeee06066660000600000006555500000000000000000000000000000000000000000000000000000000000000000000000000000000
-0000000000000c03eeeeeeee00666603000666630000050500000000000000000000000000000000000000000000000000000000000000000000000000000000
-000000000000000cee0000ee00066660066666060000050500000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000666600000000500000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000000000000eeeeeeee00000000000000000000000000000000000055000000000000000000000000000000000000000000000000000000000000000000
+000000000000bbb0eeeeeeee00000000000000000000000000000000000055500000000000000000000000000000000000000000000000000000000000000000
+000000000000bbb0eeeeeeee00006000000000000000000000006666600005550000000000000000000000000000000000000000000000000000000000000000
+00000000009ccccceeeeeeee06066660000600000006555505556666585500050000000000000000000000000000000000000000000000000000000000000000
+0000000000000c03eeeeeeee00666603000666630000050505556666555555550000000000000000000000000000000000000000000000000000000000000000
+000000000000000cee0000ee00066660066666060000050505676666555555550000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000666600000000500676666600000000000000000000000000000000000000000000000000000000000000000000000
 0000000000000000ee0000ee00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00333d0000333d0000333d0000333d00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 031112d0031112d0033333d0033333d0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
