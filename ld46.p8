@@ -165,6 +165,11 @@ function draw_doomfire()
     rectfill(2*xx,2*yy,2*xx+2,2*yy+2,df_p[df_f[df_x]])
   end
 end
+function kill_doomfire()
+  for df_i=0,df_d do
+    if (df_i>df_d-df_w) df_f[df_i] = 0
+  end
+end
 function reset_doomfire()
   df_f={}
   for df_i=0,df_d do df_f[df_i]=df_i>df_d-df_w and 8 or 0 end
@@ -172,6 +177,32 @@ end
 --END DOOMFIRE
 
 --UTILITIES
+
+dither_patterns={
+  0b1111111111111111.1,
+  0b0111111111111111.1,
+  0b0111111111011111.1,
+  0b0101111111011111.1,
+  0b0101111101011111.1,
+  0b0101101101011111.1,
+  0b0101101101011110.1,
+  0b0101101001011110.1,
+  0b0101101001011010.1,
+  0b0001101001011010.1,
+  0b0001101001001010.1,
+  0b0000101001001010.1,
+  0b0000101000001010.1,
+  0b0000001000001010.1,
+  0b0000001000001000.1,
+  0b0000000000000000.1
+}
+
+function dither_rect(x1, y1, x2, y2, color, pattern)
+  fillp(dither_patterns[pattern])
+  rectfill(x1, y1, x2, y2, color)
+  fillp()
+end
+
 function magnitude(x,y)
   return sqrt(x*x+y*y)
 end
@@ -373,6 +404,9 @@ time = 0 --game timer in s
 gamerunning = false --is gameplay allowed?
 gameover = false --discerns between menu and you died screen
 controlsshowing = false --discerns between title screen and controls screen
+startcountdown = nil --countdown for animations, starts when player hits x on controls
+startcountdownframes = 45
+startcountdown2 = nil --countdown for fade in
 
 wave_nextwavestarttime = -1
 wave_enemiesthiswave = 0
@@ -950,11 +984,24 @@ function _update()
       if(btnp(4)) open_menu() --go to title screen
     else --main menu
       if btnp(5) then
-        if controlsshowing then start_game()
+        if (controlsshowing and startcountdown == nil) then
+          startcountdown = startcountdownframes
+          kill_doomfire()
         else controlsshowing = true end
       end
     end
   end
+
+  if (startcountdown != nil) then
+    startcountdown -= 1
+    if (startcountdown == 0) then
+      startcountdown = nil
+      startcountdown2 = 30
+      start_game()
+    end
+  end
+  if (startcountdown2 != nil) startcountdown2 -= 1
+  if (startcountdown2 == 0) startcountdown2 = nil
 
   --update effects
   screen_shake_x = rnd(screen_shake*2) - screen_shake
@@ -1084,7 +1131,8 @@ function _draw()
   if not (gamerunning or gameover) then --MENU
     cls()
     draw_doomfire()
-    map(112,0)
+    logo_offset = (startcountdown == nil) and 0 or (startcountdownframes - startcountdown)
+    map(112,0,0)
     print("eternal",51,58, 9)
     print("eternal",51,57, 7)
     if controlsshowing then
@@ -1093,12 +1141,20 @@ function _draw()
       if (t%40<20) print_outline("press \x97 to begin",31,110, 7) --1s on, 1s off
     else
       if (t%40<20) print_outline("press \x97",48,100, 7) --1s on, 1s off
+
+      print("sam b", 1,116, 0)
+      print("@samboyer276", 1,122, 0)
+      print("josh s", 104,116, 0)
+      print("@smailesyboi", 80,122, 0)
     end
     palt(0) --doomguy silhouette
     palt(14)
     spr(85, 60, 120)
     palt()
 
+    if (startcountdown != nil and startcountdown < 34) then
+      dither_rect(0,0,128,128,0,(35-startcountdown)\2)
+    end
   else
     draw_lava()
 
@@ -1214,6 +1270,9 @@ function _draw()
       end
     end
 
+    if (startcountdown2 != nil) then
+      dither_rect(0,0,128,128,0,max(startcountdown2\2,1))
+    end
   end
 
   t+=1
