@@ -615,8 +615,8 @@ function add_flower_patch(x, y, num, radius, health)
     sprite = (rnd(1) < 0.2) and flr(rnd(4)) + 2 or mainflower
     local xx, yy = get_random_point_around(x,y, radius)
     add(sprites, {
-      x = xx,
-      y = yy,
+      x = flr(xx),
+      y = flr(yy),
       alivesprite = sprite,
       sprite = sprite,
       flip_x = (rnd(1) < 0.5)
