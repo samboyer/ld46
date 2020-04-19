@@ -732,7 +732,7 @@ function open_menu()
   reset_doomfire()
 end
 
-function start_game()
+function start_game(frommenu)
   player.x = playerstartx
   player.y = playerstarty
   player.weapon = player.default_weapon
@@ -767,7 +767,7 @@ function start_game()
   gameover = false
   music(-1) --TODO start game music
   screen_shake = 10 --yaas
-  sfx(6, -1)
+  if(not frommenu)sfx(6, -1)
 end
 
 function add_bullet()
@@ -987,13 +987,14 @@ function _update()
     screeny = min(max( screeny + max(pys-128+screenborder,0) - max(screenborder-pys,0) ,0), worldsizey-128)
   else
     if gameover then
-      if(btnp(5)) start_game()
+      if(btnp(5)) start_game(false)
       if(btnp(4)) open_menu() --go to title screen
     else --main menu
       if btnp(5) then
         if (controlsshowing and startcountdown == nil) then
           startcountdown = startcountdownframes
           sfx(22)
+          sfx(23)
           kill_doomfire()
         else controlsshowing = true end
       end
@@ -1005,7 +1006,7 @@ function _update()
     if (startcountdown == 0) then
       startcountdown = nil
       startcountdown2 = 30
-      start_game()
+      start_game(true)
     end
   end
   if (startcountdown2 != nil) startcountdown2 -= 1
