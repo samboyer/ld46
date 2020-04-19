@@ -240,7 +240,7 @@ end
 --SETUP
 pal(13,139,1) --palette recolouring
 pal(2,131,1)
-poke(0x5F2D, 1) --enable mouse
+--poke(0x5F2D, 1) --enable mouse
 cls() -- clear screen
 
 --CONSTANTS/CONFIG
@@ -294,16 +294,16 @@ end
 player.weapon = player.default_weapon
 
 --VARIABLES
-lmbdown = false
-click = false
-oldclick = false
 screenx = screenstartx --camera position
 screeny = screenstarty
 screen_shake = 0
 weapontipx = 0
+weapontipy = 0
 isweaponfacingleft = false
 isfacingdown = true
 oldenemycount = -1
+inputx = 0
+inputy = 0
 
 bullets = {}
 --(x,y,dx,dy,sprite,life,dead)
@@ -458,11 +458,16 @@ function control_player()
       start_wateringcan()
     end
 
+    inputx=0
+    inputy=0
+    if (btn(0,0) or btn(0,1)) inputx -= 1
+    if (btn(1,0) or btn(1,1)) inputx += 1
+    if (btn(2,0) or btn(2,1)) inputy -= 1
+    if (btn(3,0) or btn(3,1)) inputy += 1
+
     if wateranimframes == 0 then
-      if (btn(0,0) or btn(0,1)) x -= 1
-      if (btn(1,0) or btn(1,1)) x += 1
-      if (btn(2,0) or btn(2,1)) y -= 1
-      if (btn(3,0) or btn(3,1)) y += 1
+      x = inputx
+      y = inputy
     end
   end
   playerstill = x==0 and y==0
@@ -535,7 +540,7 @@ function control_player()
   player.weapon = player.weapon or player.default_weapon
 
   player.weapon_cooldown = max(player.weapon_cooldown - 1, 0)
-  if (lmbdown and player.weapon_cooldown == 0 and wateranimframes==0) then
+  if (gamerunning and btn(5) and player.weapon_cooldown == 0 and wateranimframes==0) then
     add_bullet()
     player.weapon_cooldown = player.weapon.cooldown
   end
@@ -543,14 +548,6 @@ function control_player()
   -- if (pl.t%4) == 0) then
   --  sfx(1)
   -- end
-end
-
-function update_mouse()
-  mousex=stat(32)
-  mousey=stat(33)
-  lmbdown = (stat(34)%2==1) and gamerunning
-  click = lmbdown and oldclick != lmbdown and gamerunning
-  oldclick = lmbdown
 end
 
 function add_flower_patch(x, y, num, radius, health)
@@ -722,8 +719,8 @@ end
 
 function add_bullet()
   sfx(0, -1)
-  dx = mousex + screenx - weapontipx
-  dy = mousey + screeny - weapontipy
+  dx = inputx
+  dy = inputy
   mag = magnitude(dx,dy) * bulletspeed
   flip_x = false
   flip_y = false
@@ -888,8 +885,6 @@ function _update()
 
   update_tumbleweeds()
 
-  update_mouse()
-
   cooldown_powerups()
 
   control_player()
@@ -1028,7 +1023,7 @@ function draw_player()
   end
 
   --bloomguy
-  isfacingdown = mousey >= player.y - screeny
+  isfacingdown = inputy >= 0
   if playerstill then
     player.sprite = (isfacingdown and 96 or 100) + max((t \ 4)%6-2,0)
   else
@@ -1044,7 +1039,7 @@ function draw_player()
     else weaponsprite = 67
     end
   end
-  isweaponfacingleft = mousex <= player.x - screenx
+  isweaponfacingleft = inputx<=0
   if isweaponfacingleft then --right hand
     if (weaponsprite != nil) then
       draw_sprite(weaponsprite, player.x - 8, player.y)
@@ -1139,9 +1134,6 @@ function _draw()
 
     --UI
     if gamerunning then
-      if oldclick then ret = 17 else ret = 16 end
-      spr(ret, mousex-3+ui_shake_x, mousey-3+ui_shake_y)
-
       print("score: "..flr(score), 2+ui_shake_x,2+ui_shake_y, 7)
 
       -- powerup bar
