@@ -499,11 +499,11 @@ end
 function add_powerup(x, y, powerup)
   p = {
     x = x,
-    y = y,
-    sprite = powerup.sprite,
-    type = powerup.type,
-    contents = powerup.contents
+    y = y
   }
+  for k,v in pairs(powerup) do
+    p[k] = v
+  end
   add(powerups, p)
 end
 
@@ -724,7 +724,10 @@ function draw_sprite(spriteno, x, y, flip_x)
 end
 
 function draw_object(obj)
-  spr(obj.sprite, obj.x - screenx + screen_shake_x, obj.y - screeny + screen_shake_y, 1, 1, obj.flip_x or false)
+  sprites = obj.sprites or 1
+  for i=1,sprites do
+    spr(obj.sprite + i - 1, obj.x - screenx + screen_shake_x + 8*(i-1), obj.y - screeny + screen_shake_y, 1, 1, obj.flip_x or false)
+  end
 end
 
 function draw_arrow(obj, dir)
