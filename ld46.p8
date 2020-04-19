@@ -209,6 +209,9 @@ function print_outline(s, x,y, col, colout)
   print(s,x,y,col)
 end
 
+function distance_basic(o1, o2) --axis-aligned distance between objects
+  return max(abs(o1.x - o2.x), abs(o1.y - o2.y))
+end
 
 function distance(o1, o2)
   dx = o1.x - o2.x
@@ -261,6 +264,7 @@ wave_enemycountbase = 3 --base num of enemies per wave
 wave_enemycountdelta = 1
 wave_enemycloseness = 48 --how far in pixels worms can appear from the 'wave origin'
 wave_enemyclosenessdelta = 8
+wave_originrubberband = 256 --max distance the enemy origin can be
 
 player = {
   dx = 0,
@@ -340,7 +344,7 @@ available_powerups = {
     sprite = 72,
     type = "stat",
     contents = {
-      name = "speed boost",
+      name = "speed juice",
       key = "maxspd",
       value = 4.8,
       lifetime = 240
@@ -500,13 +504,21 @@ function control_player()
   -- powerups
   collected_powerup = nil
   for p in all(powerups) do
-    if (collected_powerup == nil and abs(player.x - p.x) < 8 and abs(player.y - p.y) < 8) then
+    if (collected_powerup == nil and distance_basic(player,p) < 8) then
       collected_powerup = p
     end
   end
   if (collected_powerup != nil) then
     apply_powerup(collected_powerup)
     del(powerups, collected_powerup)
+  end
+
+  --enemy collsisions (for knockback etc)
+  for e in all(enemies) do
+    if (distance_basic(player, e) < 8) then
+      player.dx = (player.x - e.x)*2
+      player.dy = (player.y - e.y)*2
+    end
   end
 
   -- current weapon
@@ -517,7 +529,7 @@ function control_player()
   player.weapon = player.weapon or player.default_weapon
 
   player.weapon_cooldown = max(player.weapon_cooldown - 1, 0)
-  if (lmbdown and player.weapon_cooldown == 0) then
+  if (lmbdown and player.weapon_cooldown == 0 and wateranimframes==0) then
     add_bullet()
     player.weapon_cooldown = player.weapon.cooldown
   end
@@ -625,7 +637,7 @@ function update_tumbleweeds()
 end
 
 function is_onground(x,y)
-  return not fget(mget(x\8,y\8),0)
+  return x>0 and y>0 and x<worldsizex and y<worldsizey and not fget(mget(x\8,y\8),0)
 end
 
 function get_random_point(offscreen, onground)
@@ -642,10 +654,11 @@ function get_random_point(offscreen, onground)
   return x,y
 end
 
-function get_random_point_around(cx,cy,radius)
+function get_random_point_around(cx,cy,maxradius, minradius)
+  minradius = minradius or 0
   local x,y = 0,0
   repeat
-    local dist = rnd(radius)
+    local dist = rnd(maxradius-minradius)+ minradius
     local angle = rnd(1)
     x, y = cx+dist*cos(angle), cy+dist*sin(angle)
   until(is_onground(x,y))
@@ -743,7 +756,7 @@ function update_bullets()
         -- else
           hit_enemy = nil
           for e in all(enemies) do
-            if ((dead_enemy == nil) and abs(b.x - e.x) < 8 and abs(b.y - e.y) < 8) then
+            if ((dead_enemy == nil) and distance_basic(b,e) < 8) then
               hit_enemy = e
             end
           end
@@ -819,7 +832,7 @@ function update_wave()
       wave_closenessthiswave = wave_enemycloseness + wave_enemyclosenessdelta * wave
       wave_timetilnextspawn = wave_spawnseparation
       wave_nextwavestarttime = -1
-      wave_originx, wave_originy = get_random_point(true,false)
+      wave_originx, wave_originy = get_random_point_around(player.x, player.y, wave_originrubberband, 128)
     end
   else --mid-wave time
     if wave_spawned != wave_enemiesthiswave then --mid-spawn
@@ -972,7 +985,7 @@ function draw_player()
   oldpos = {player.x, player.y}
   local show_ghosts = false
   for p in all(active_powerups) do
-    if (p.name == "speed boost") show_ghosts = true
+    if (p.name == "speed juice") show_ghosts = true
   end
 
   if show_ghosts then
@@ -1163,6 +1176,7 @@ function _draw()
   --DEBUG
   print(flr(stat(1)*100) .. "% CPU",0,16,7)
   print(stat(7).." fps", 0, 24, 7)
+  print(wave_spawned .."/".. wave_enemiesthiswave,0,36,7)
   --print("time "..time, 0, 36, 7)
   --print("wave_timetilnextspawn "..wave_timetilnextspawn, 0, 64, 7)
 
