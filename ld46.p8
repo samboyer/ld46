@@ -943,7 +943,7 @@ function show_effect_text(text, effect, playsfx)
   if(playsfx==nil) playsfx = true
   effect_text = text
   effect_text_time = 40
-  effect_text_effect = effect or flr(rnd(8))
+  effect_text_effect = effect or flr(rnd(effect_count))
   if(playsfx) sfx(5)
 end
 
@@ -951,7 +951,7 @@ effect_text = nil
 effect_text_effect = 0
 effect_text_time = 0
 effect_text_width = 6
-effect_count = 4
+effect_count = 10
 function draw_effect_text()
   effect_text_time -= 1;
 
@@ -981,6 +981,14 @@ function draw_effect_text()
       if effect_text_time < 33 then
         print(sub(effect_text,j,j), textx + text_offset + ui_shake_x, texty + ui_shake_y, (effect_text_effect > 5) and (t%2)*7 or 0)
       end
+    end
+  elseif effect_text_effect < 10 then
+    for j=1,#effect_text do
+      text_offset = effect_text_width*(j-1)
+      offset_x = text_offset
+      offset_y = 0
+      col = fierycolours[1+(t+effect_text_time\2)%#fierycolours]
+      print_outline(sub(effect_text,j,j), textx + offset_x + ui_shake_x, texty + offset_y + ui_shake_y, (effect_text_effect%2 == 0) and 7 or col, (effect_text_effect%2 == 0) and col or 7)
     end
   end
 end
@@ -1039,7 +1047,8 @@ gameover_texts = {
   "\"everything not saved will be lost\"",
   "you lose (the flowers)",
   "omae wa mo shindeiru",
-  "f"
+  "f",
+  "sam is a poopoo"
 }
 
 __gfx__
