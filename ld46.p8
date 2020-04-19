@@ -187,13 +187,23 @@ player = {
   dy = 0,
   x = playerstartx,
   y = playerstarty,
-  accel = 0.4,
-  maxspd = 1.8,
-  damage = 50,
-  sprite = 64
+  accel = 0.6,
+  maxspd = 2.4,
+  sprite = 64,
+  default_weapon = {
+    sprite = 65,
+    damage = 50,
+    cooldown = 20,
+    lifetime = nil
+  },
+  weapon = nil,
+  weapon_cooldown = 0
 }
 
+player.weapon = player.default_weapon
+
 --VARIABLES
+lmbdown = false
 click = false
 oldclick = false
 screenx = screenstartx --camera position
@@ -211,6 +221,21 @@ flowers = {}
 
 enemies = {}
 
+powerups = {}
+
+available_powerups = {
+  {
+    sprite = 69,
+    type = "weapon",
+    contents = {
+      sprite = 69,
+      damage = 20,
+      cooldown = 4,
+      lifetime = 120
+    }
+  }
+}
+
 score = 0
 kills = 0
 health = 100
@@ -220,7 +245,6 @@ wateranimframes = 0 --frames remaining of watering can anim
 watersuccess = false --did the watering get a flower
 weakest_flower = nil --ref to weakest flower obj
 t = 0 --frame count
-weaponsprite = 65 --sprite for current weapon held
 gamerunning = false --is gameplay allowed?
 gameover = false --discerns between menu and you died screen
 controlsshowing = false --discerns between title screen and controls screen
@@ -261,6 +285,20 @@ function water_plants()
   wateranimframes = 30
   sfx(7)
   make_emitter(emitter_wateringcan, 35, 1)
+end
+
+function apply_powerup(powerup)
+  if (powerup.type == "weapon") then
+    new_weapon = {
+      sprite = powerup.contents.sprite,
+      damage = powerup.contents.damage,
+      cooldown = powerup.contents.cooldown,
+      lifetime = powerup.contents.lifetime
+    }
+    player.weapon = new_weapon
+  else
+    show_effect_text("fix apply_powerup")
+  end
 end
 
 function control_player()
@@ -321,6 +359,28 @@ function control_player()
     player.y += player.dy
   end
 
+  -- powerups
+  collected_powerup = nil
+  for p in all(powerups) do
+    if (collected_powerup == nil and abs(player.x - p.x) < 8 and abs(player.y - p.y) < 8) then
+      collected_powerup = p
+    end
+  end
+  if (collected_powerup != nil) then
+    apply_powerup(collected_powerup)
+    del(powerups, collected_powerup)
+  end
+
+  -- weapon
+  if (player.weapon.lifetime != nil) player.weapon.lifetime -= 1
+  if (player.weapon.lifetime == 0) player.weapon = player.default_weapon
+
+  player.weapon_cooldown = max(player.weapon_cooldown - 1, 0)
+  if (lmbdown and player.weapon_cooldown == 0) then
+    add_bullet()
+    player.weapon_cooldown = player.weapon.cooldown
+  end
+
   -- if (pl.t%4) == 0) then
   --  sfx(1)
   -- end
@@ -329,11 +389,9 @@ end
 function update_mouse()
   mousex=stat(32)
   mousey=stat(33)
-  lmbdown=(stat(34)%2==1)
+  lmbdown = (stat(34)%2==1) and gamerunning
   click = lmbdown and oldclick != lmbdown and gamerunning
   oldclick = lmbdown
-
-  if (click) add_bullet()
 end
 
 function add_flower_patch(x, y, num)
@@ -385,6 +443,21 @@ function add_enemy(x, y)
   add(enemies, e)
 end
 
+function add_random_powerup(x, y)
+  add_powerup(x, y, available_powerups[flr(rnd(#available_powerups))+1])
+end
+
+function add_powerup(x, y, powerup)
+  p = {
+    x = x,
+    y = y,
+    sprite = powerup.sprite,
+    type = powerup.type,
+    contents = powerup.contents
+  }
+  add(powerups, p)
+end
+
 function spawn_enemy_offscreen()
   repeat
     enemyx = flr(rnd(worldsizex-24))+8
@@ -404,6 +477,7 @@ end
 function start_game()
   player.x = playerstartx
   player.y = playerstarty
+  player.weapon = player.default_weapon
   screenx = screenstartx
   screeny = screenstarty
 
@@ -421,6 +495,9 @@ function start_game()
     centery = flr(rnd(worldsizey-32))+16
     add_flower_patch(centerx, centery, flr(rnd(5))+6)
   end
+
+  --TEMP
+  add_random_powerup(130, 115)
 
   gamerunning = true
   gameover = false
@@ -444,6 +521,7 @@ function add_bullet()
     dx = dx/mag,
     dy = dy/mag,
     sprite = sprite,
+    damage = player.weapon.damage,
     life = bulletlife,
     dead = false
   })
@@ -478,7 +556,7 @@ function update_bullets()
             b.dead = true
             oneshot_splash(b.x,b.y, true)
 
-            hit_enemy.health -= player.damage
+            hit_enemy.health -= b.damage
             if hit_enemy.health <= 0 then  --slug is kil
               del(enemies, hit_enemy)
               kills += 1
@@ -531,9 +609,9 @@ function update_health()
 end
 
 function _update()
-  control_player()
-
   update_mouse()
+
+  control_player()
 
   update_bullets()
 
@@ -541,13 +619,7 @@ function _update()
 
   update_health()
 
-  if wateranimframes==0 then
-    weaponsprite = 65
-  else
-    if wateranimframes > 5 and wateranimframes < 25 then
-      weaponsprite = 68
-    else weaponsprite = 67
-    end
+  if wateranimframes > 0 then
     wateranimframes -= 1
     if (wateranimframes==0 and watersuccess) then
       random_effect_text(water_texts)
@@ -577,7 +649,7 @@ function _update()
       if(btnp(4)) open_menu() --go to title screen
     else --main menu
       if btnp(5) then
-        if controlsshowing then start_game() 
+        if controlsshowing then start_game()
         else controlsshowing = true end
       end
     end
@@ -637,6 +709,11 @@ function _draw()
     end
   end
 
+  --powerups
+  for p in all(powerups) do
+    draw_object(p)
+  end
+
   draw_enemies()
 
   --bloomguy
@@ -649,6 +726,13 @@ function _draw()
   draw_object(player)
 
   --weapon
+  weaponsprite = player.weapon.sprite
+  if wateranimframes > 0 then
+    if wateranimframes > 5 and wateranimframes < 25 then
+      weaponsprite = 68
+    else weaponsprite = 67
+    end
+  end
   isweaponfacingleft = mousex <= player.x - screenx
   if isweaponfacingleft then --right hand
     draw_sprite(weaponsprite, player.x - 8, player.y)
@@ -730,7 +814,7 @@ function _draw()
       map(112,0)
       print("eternal",51,58, 9)
       print("eternal",51,57, 7)
-      if controlsshowing then 
+      if controlsshowing then
         controlsstr = "controls:\n\x8b\x94\x91\x83/esdf: move\nlmb: shoot soaker\n\x8e : water plants\n\ndon't let the flowers die!"
         print(controlsstr, 18,70,7)
         if (t%40<20) print("press \x97 to begin",31,110, 7) --1s on, 1s off
@@ -856,6 +940,7 @@ generic_texts = {
 }
 
 gameover_texts = {
+  "game over",
   "mission failed. we'll get em next time",
   "death",
   "dehydration comes to us all",
@@ -865,7 +950,8 @@ gameover_texts = {
   "omae wa mou shindeiru",
   "\"everything not saved will be lost\"",
   "you lose (the flowers)",
-  "omae wa mo shindeiru"
+  "omae wa mo shindeiru",
+  "f"
 }
 
 __gfx__
@@ -904,10 +990,10 @@ cc7ccccc000000000000000000000000000000000000000000000000000000000000000000000000
 0000000000000000eeeeeeee00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 000000000000bbb0eeeeeeee00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 000000000000bbb0eeeeeeee00006000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000009ccccceeeeeeee06066660000600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-0000000000000c03eeeeeeee00666603000666630000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-000000000000000cee0000ee00066660066666060000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000666600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000009ccccceeeeeeee06066660000600000006555500000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000000000c03eeeeeeee00666603000666630000050500000000000000000000000000000000000000000000000000000000000000000000000000000000
+000000000000000cee0000ee00066660066666060000050500000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000666600000000500000000000000000000000000000000000000000000000000000000000000000000000000000000
 0000000000000000ee0000ee00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00333d0000333d0000333d0000333d00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 031112d0031112d0033333d0033333d0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
