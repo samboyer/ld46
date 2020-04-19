@@ -162,34 +162,38 @@ end
 pal(13,139,1) --palette recolouring
 pal(2,131,1)
 poke(0x5F2D, 1) --enable mouse
-click = false
-oldclick = false
-screenx = 128
-screeny = 64
+cls() -- clear screen
+
+--CONSTANTS/CONFIG
 screenborder = 32 -- how close guy can get before moving screen
-worldsizex = 384 --size of arena in pixels
-worldsizey = 256
 bulletspeed = 0.5
 bulletlife = 40 -- life of bullet in frames
-killscorescaler = 0.2
-
---EFFECTS
-screen_shake = 0
+worldsizex = 384 --size of arena in pixels
+worldsizey = 256
+killscorescaler = 0.2 --%age of enemy max health converted to points
 screen_shake_decay = 1
-
-cls() -- clear screen
+playerstartx = 188
+playerstarty = 104
+screenstartx = 128
+screenstarty = 30
 
 player = {
   dx = 0,
   dy = 0,
-  x = 192,
-  y = 104,
+  x = playerstartx,
+  y = playerstarty,
   accel = 0.4,
   maxspd = 1.8,
   damage = 50,
   sprite = 64
 }
-weapontipx = 0
+
+--VARIABLES
+click = false
+oldclick = false
+screenx = screenstartx --camera position
+screeny = screenstarty
+screen_shake = 0
 weapontipx = 0
 isweaponfacingleft = false
 isfacingdown = true
@@ -205,6 +209,13 @@ enemies = {}
 score = 0
 kills = 0
 health = 100
+
+playerstill = true --for idle animation
+wateranimframes = 0 --frames remaining of watering can anim
+weakest_flower = nil --ref to weakest flower obj
+t = 0 --frame count
+weaponsprite = 65 --sprite for current weapon held
+gamerunning = false --is gameplay allowed?
 
 function distance(o1, o2)
   dx = o1.x - o2.x
@@ -224,10 +235,6 @@ function check_collisions(x, y, dx, dy, in_x) -- assume width=height=8
     return (checky > worldsizey or checky < 0 or fget(mget(x / 8, tiley), 0) or fget(mget((x+7.9) / 8, tiley), 0))
   end
 end
-
-playerstill = true
-
-wateranimframes = 0
 
 function water_plants()
   water = {
@@ -365,22 +372,29 @@ function add_enemy(x, y)
   add(enemies, e)
 end
 
--- TEMPORARY
-add_flower_patch(192, 128, flr(rnd(8))+10) --place patch in center
+function start_game()
+  player.x = playerstartx
+  player.y = playerstarty
 
-for i=1,9 do
-  centerx = flr(rnd(worldsizex-32))+16
-  centery = flr(rnd(worldsizey-32))+16
-  add_flower_patch(centerx, centery, flr(rnd(5))+6)
-end
+  add_flower_patch(192, 128, flr(rnd(8))+10) --place patch in center
 
-for i=1,1 do
-  repeat
-    enemyx = flr(rnd(worldsizex-24))+8
-    enemyy = flr(rnd(worldsizey-24))+8
-  until( enemyx<screenx or enemyx>screenx+128
-    or enemyy<screeny or enemyy>screeny+128)
-  add_enemy(enemyx, enemyy)
+  for i=1,9 do
+    centerx = flr(rnd(worldsizex-32))+16
+    centery = flr(rnd(worldsizey-32))+16
+    add_flower_patch(centerx, centery, flr(rnd(5))+6)
+  end
+
+  for i=1,1 do
+    repeat
+      enemyx = flr(rnd(worldsizex-24))+8
+      enemyy = flr(rnd(worldsizey-24))+8
+    until( enemyx<screenx or enemyx>screenx+128
+      or enemyy<screeny or enemyy>screeny+128)
+    add_enemy(enemyx, enemyy)
+  end
+
+  gamerunning = true
+  t=0
 end
 
 function add_bullet()
@@ -470,8 +484,6 @@ function update_enemies()
   if (deadenemy != nil) del(enemies, deadenemy)
 end
 
-weakest_flower = nil
-
 function update_health()
   health = 100
   weakest_flower = nil
@@ -483,11 +495,6 @@ function update_health()
     end
   end
 end
-
-t = 0
-weaponsprite = 65
-
-gamerunning = true
 
 function _update()
   control_player()
@@ -513,17 +520,22 @@ function _update()
     end
   end
 
-  if health==0 and gamerunning then --TODO make it so any patch dying ends the game
-    --end the game
-    music(56)
-    gamerunning = false
-  end
+  if gamerunning then
+    score += 0.2
+    if health==0 then
+      --end the game
+      music(56)
+      gamerunning = false
+    end
 
-  --move screen
-  pxs = player.x - screenx
-  pys = player.y - screeny
-  screenx = min(max( screenx + max(pxs-128+screenborder,0) - max(screenborder-pxs,0) ,0), worldsizex-128)
-  screeny = min(max( screeny + max(pys-128+screenborder,0) - max(screenborder-pys,0) ,0), worldsizey-128)
+    --move screen
+    pxs = player.x - screenx
+    pys = player.y - screeny
+    screenx = min(max( screenx + max(pxs-128+screenborder,0) - max(screenborder-pxs,0) ,0), worldsizex-128)
+    screeny = min(max( screeny + max(pys-128+screenborder,0) - max(screenborder-pys,0) ,0), worldsizey-128)
+  else
+    if(btn(5)) start_game() --TODO show controls first!
+  end
 
   --update effects
   screen_shake_x = rnd(screen_shake*2) - screen_shake
@@ -549,16 +561,6 @@ end
 function draw_enemies()
   for e in all(enemies) do
     if (not e.dead) draw_object(e)
-  end
-  for e in all(enemies) do
-    if (not e.dead) then
-      ex = e.x - screenx - 64
-      ey = e.y - screeny - 64
-      if abs(ex)>64 or abs(ey)>64 then
-        dir = get_dir8(e.x - screenx - 64, e.y - screeny - 64)
-        draw_arrow(e, dir)
-      end
-    end
   end
 end
 
@@ -608,16 +610,30 @@ function _draw()
   draw_particles()
 
   --UI
-  if oldclick then ret = 17 else ret = 16 end
-  spr(ret, mousex-3+ui_shake_x, mousey-3+ui_shake_y)
+  if gamerunning then
+    if oldclick then ret = 17 else ret = 16 end
+    spr(ret, mousex-3+ui_shake_x, mousey-3+ui_shake_y)
 
-  print("score: "..score, 2+ui_shake_x,2+ui_shake_y, 7)
-  spr(46, 2+ui_shake_x,110+ui_shake_y, 2,2)
-  rect(20,115, 122,122, 7) --health bar
-  rectfill(21+ui_shake_x,116+ui_shake_y, 21+health+ui_shake_x,121+ui_shake_y, 14)
+    print("score: "..flr(score), 2+ui_shake_x,2+ui_shake_y, 7)
+    spr(46, 2+ui_shake_x,110+ui_shake_y, 2,2)
+    rect(20,115, 122,122, 7) --health bar
+    rectfill(21+ui_shake_x,116+ui_shake_y, 21+health+ui_shake_x,121+ui_shake_y, 14)
 
-  spr(45, 105+ui_shake_x,1+ui_shake_y)--kills
-  print(kills, 115+ui_shake_x,2+ui_shake_y, 7)
+    spr(45, 105+ui_shake_x,1+ui_shake_y)--kills
+    print(kills, 115+ui_shake_x,2+ui_shake_y, 7)
+  end
+
+  --draw enemy indicators
+  for e in all(enemies) do
+    if (not e.dead) then
+      ex = e.x - screenx - 64
+      ey = e.y - screeny - 64
+      if abs(ex)>64 or abs(ey)>64 then
+        dir = get_dir8(e.x - screenx - 64, e.y - screeny - 64)
+        draw_arrow(e, dir)
+      end
+    end
+  end
 
   --weakest flower direction
   if weakest_flower != nil then
@@ -633,7 +649,6 @@ function _draw()
 
   if (effect_text_time > 0) draw_effect_text();
 
-  score += 0.2 --TEMP TODO
   t+=1
 
   -- DEBUG
@@ -645,9 +660,12 @@ function _draw()
   -- end
 
   --cls() -- clear screen
-  --map(112,0)
-  --print("eternal",51,57, 7)
-
+  if not gamerunning then --TODO fix so it's !gamerunning && !deadyet
+    map(112,0)
+    print("eternal",51,58, 9)
+    print("eternal",51,57, 7)
+    if (t%60<30) print("press \x97 to begin",31,100, 7) --1s on, 1s off
+  end
 end
 
 -->8
@@ -749,9 +767,21 @@ generic_texts = {
   "sample text",
   "hey! listen!",
   "owo what's this",
-  "you are a saucy boy"
+  "you are a saucy boy",
+  "ee urr",
 }
 
+lose_texts = {
+  "mission failed. we'll get em next time",
+  "death",
+  "dehydration comes to us all",
+  "you had two jobs",
+  "flower says goodbye",
+  "bloom slain",
+  "you are a saucy boy",
+  "\"everything not saved will be lost\"",
+  "\"you lose (the flowers)\"",
+}
 
 
 __gfx__
@@ -879,7 +909,7 @@ __gff__
 0000010103010000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 __map__
-1717171717171717171717171717171717171717171717171717171717171717171717171717171717171717171717170000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000007000000000000000000000000000000
+1717171717171717171717171717171717171717171717171717171717171717171717171717171717171717171717170000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 1707070707070707070707070707070707070707070707070707070707070707070707070707070707070707070707170000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 17070707070707070707070707070707070707070707070707070707070707070707070707070707070707070707071700000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000d1d0c3dac2c1c3c2c1c3c2c1d3c1d0d2
 1707070707070707070707070707070707070707070707070707070707070707070707070707070707070707070707170000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000c000c0c0c000c0c000c0c0c0c0c000
