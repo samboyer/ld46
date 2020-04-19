@@ -129,12 +129,12 @@ function emitter_wateringcan()
   make_particle(axis((weapontipx - screenx)/127, _vx), axis((weapontipy - screeny)/127, _vy, 0.0003), {0, 24}, axis(), 10+rnd(5))
  end
 
-function oneshot_splash(worldx,worldy, extrafx)
+function oneshot_splash(worldx,worldy, extrafx, sprite)
   for i=0,10 do
     local _r = rnd(1)-0.5
     local _vx = 0.008 * sin(_r)
     local _vy = cos(_r) * -0.008
-    make_particle(axis((worldx - screenx)/127, _vx), axis((worldy - screeny)/127, _vy, 0.001), {0, 24}, axis(), 5+rnd(3))
+    make_particle(axis((worldx - screenx)/127, _vx), axis((worldy - screeny)/127, _vy, 0.001), {(sprite%16)*8, (sprite\16)*8,}, axis(), 5+rnd(3))
   end
   if extrafx then
     sfx(6)
@@ -312,7 +312,9 @@ player = {
     shake = 3,
     bullet_sprite = 32,
     bullet_animated = true,
-    lifetime = nil
+    lifetime = nil,
+    particles = true,
+    particle_sprite = 48,
   },
   weapon = nil,
   weapon_cooldown = 0
@@ -359,6 +361,7 @@ available_powerups = {
       bullet_sprite = 36,
       lifetime = 150,
       shake = 3,
+      particles = false
     }
   },
   {
@@ -373,7 +376,9 @@ available_powerups = {
       cooldown = 40,
       bullet_sprite = 38,
       lifetime = 150,
-      shake = 25,
+      shake = 15,
+      particles = true,
+      particle_sprite = 49,
     }
   },
   {
@@ -808,11 +813,14 @@ function add_bullet()
     flip_y = flip_y,
     damage = player.weapon.damage,
     life = bulletlife,
-    dead = false
+    dead = false,
+    particles = player.weapon.particles,
+    particle_sprite = player.weapon.particle_sprite
   })
 
   random_effect_text(shoot_texts, 0.05)
   screen_shake = player.weapon.shake
+  if(player.weapon.particles) oneshot_splash(weapontipx, weapontipy, false, player.weapon.particle_sprite)
 end
 
 function update_bullets()
@@ -825,12 +833,9 @@ function update_bullets()
       if (b.animated) b.sprite = b.sprite_base + (t%2) --32+(b.sprite-28) %8 --cycle sprite
       if b.life < 0 then
         b.dead = true
-        oneshot_splash(b.x,b.y, false)
+
+        if(b.particles) oneshot_splash(b.x,b.y, false, b.particle_sprite)
       else
-        -- if check_collisions(b.x, b.y, b.dx, b.dy, false) or check_collisions(b.x, b.y, b.dx, b.dy, true) then
-        --   b.dead = true
-        --   oneshot_splash(b.x,b.y,false)
-        -- else
           hit_enemy = nil
           for e in all(enemies) do
             if ((dead_enemy == nil) and distance_basic(b,e) < 8) then
@@ -839,7 +844,7 @@ function update_bullets()
           end
           if hit_enemy != nil then
             b.dead = true
-            oneshot_splash(b.x,b.y, true)
+        if(b.particles) oneshot_splash(b.x,b.y, true, b.particle_sprite)
 
             hit_enemy.health -= b.damage
             if hit_enemy.health <= 0 then
@@ -987,8 +992,10 @@ function _update()
     screeny = min(max( screeny + max(pys-128+screenborder,0) - max(screenborder-pys,0) ,0), worldsizey-128)
   else
     if gameover then
-      if(btnp(5)) start_game(false)
-      if(btnp(4)) open_menu() --go to title screen
+      if t_die>50 then
+        if(btnp(5)) start_game(false)
+        if(btnp(4)) open_menu() --go to title screen
+      end
     else --main menu
       if btnp(5) then
         if (controlsshowing and startcountdown == nil) then
@@ -1464,14 +1471,14 @@ c700ccc0c0c0ccc000cc000000c07000000550000005000055655555555656550000000000000000
 0000000000000000000c0000000cc00000000000000000005656555055656555000000000000000000000000000000000000000000767600eeeeee9aaaeeeeee
 000000000000000000007000000c000000000000000000005555550055565655000000000000000000000000000000000000000000767600eeeee9aa9aaeeeee
 000000000000000000c0c0000000c00000000000000000005555500055555555000000000000000000000000000000000000000077777700eeeee9a9a9aeeeee
-cc7ccc7c00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000eeeee9aa9aaeeee0
-c7cc7cc7000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000eeee99aaa9eee00
-cc7cc7cc00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000eee9999eee000
-cc7ccccc00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000eeeeeeeeeee00
-111c11c10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000eeeeeeeeeeeee0
-1c1111c10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000eeeeee0eeeeee0
-111c1c110000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000eeeeee00eeeee0
-11c111c100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000eee0000eeee00
+cc7ccc7caa999898000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000eeeee9aa9aaeeee0
+c7cc7cc7898555550000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000eeee99aaa9eee00
+cc7cc7cc55555555000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000eee9999eee000
+cc7ccccc88988888000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000eeeeeeeeeee00
+111c11c15558558500000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000eeeeeeeeeeeee0
+1c1111c15855558500000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000eeeeee0eeeeee0
+111c1c115558585500000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000eeeeee00eeeee0
+11c111c155855585000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000eee0000eeee00
 0000000000000000eeeeeeee00000000000000000000000000000000000055000066660000000000000000000000000000000000000000000000000000000000
 000000000000bbb0eeeeeeee000000000000000000000000000000000000555003bb8bb000000000000000000000000000000000000000000000000000000000
 000000000000bbb0eeeeeeee0000600000000000000000000000666660000555023888b000000000000000000000000000000000000000000000000000000000
