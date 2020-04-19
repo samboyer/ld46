@@ -239,6 +239,10 @@ player = {
   weapon = nil,
   weapon_cooldown = 0
 }
+player_original_stats = {}
+for k,v in pairs(player) do
+  player_original_stats[k] = v
+end
 
 player.weapon = player.default_weapon
 
@@ -364,7 +368,6 @@ function apply_powerup(powerup)
   if (powerup.type == "weapon") then
     player.weapon = contents
   elseif (powerup.type == "stat") then
-    contents.oldvalue = player[contents.key]
     player[contents.key] = contents.value
   else
     show_effect_text("fix apply_powerup")
@@ -383,7 +386,7 @@ function cooldown_powerups()
   if (done_powerup != nil) then
     if (done_powerup.type == "weapon") then
     elseif (done_powerup.type == "stat") then
-      player[done_powerup.key] = done_powerup.oldvalue
+      player[done_powerup.key] = player_original_stats[done_powerup.key]
     else
       show_effect_text("fix cooldown_powerups")
     end
