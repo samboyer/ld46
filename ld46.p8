@@ -214,6 +214,7 @@ bulletlife = 40 -- life of bullet in frames
 worldsizex = 384 --size of arena in pixels
 worldsizey = 256
 killscorescaler = 0.2 --%age of enemy max health converted to points
+powerup_chance = 0.3 --chance a killed enemy will drop a powerup
 screen_shake_decay = 1
 playerstartx = 188
 playerstarty = 104
@@ -261,6 +262,7 @@ flowers = {}
 enemies = {}
 
 powerups = {}
+active_powerups = {}
 
 available_powerups = {
   {
@@ -283,6 +285,15 @@ available_powerups = {
       damage = 200,
       cooldown = 40,
       lifetime = 120
+    }
+  },
+  {
+    sprite = 72,
+    type = "stat",
+    contents = {
+      key = "maxspd",
+      value = 4.8,
+      lifetime = 240
     }
   }
 }
@@ -352,8 +363,31 @@ function apply_powerup(powerup)
   end
   if (powerup.type == "weapon") then
     player.weapon = contents
+  elseif (powerup.type == "stat") then
+    contents.oldvalue = player[contents.key]
+    player[contents.key] = contents.value
   else
     show_effect_text("fix apply_powerup")
+  end
+  contents.type = powerup.type
+  contents.life = contents.lifetime
+  add(active_powerups, contents)
+end
+
+function cooldown_powerups()
+  done_powerup = nil
+  for p in all(active_powerups) do
+    p.life = max(p.life - 1, 0)
+    if (p.life == 0) done_powerup = p
+  end
+  if (done_powerup != nil) then
+    if (done_powerup.type == "weapon") then
+    elseif (done_powerup.type == "stat") then
+      player[done_powerup.key] = done_powerup.oldvalue
+    else
+      show_effect_text("fix cooldown_powerups")
+    end
+    del(active_powerups, done_powerup)
   end
 end
 
@@ -427,9 +461,12 @@ function control_player()
     del(powerups, collected_powerup)
   end
 
-  -- weapon
-  if (player.weapon.lifetime != nil) player.weapon.lifetime -= 1
-  if (player.weapon.lifetime == 0) player.weapon = player.default_weapon
+  -- current weapon
+  player.weapon = nil
+  for p in all(active_powerups) do
+    if (player.weapon == nil and p.type == "weapon") player.weapon = p
+  end
+  player.weapon = player.weapon or player.default_weapon
 
   player.weapon_cooldown = max(player.weapon_cooldown - 1, 0)
   if (lmbdown and player.weapon_cooldown == 0) then
@@ -615,7 +652,8 @@ function update_bullets()
             oneshot_splash(b.x,b.y, true)
 
             hit_enemy.health -= b.damage
-            if hit_enemy.health <= 0 then  --slug is kil
+            if hit_enemy.health <= 0 then
+              if (rnd(1) < powerup_chance) add_random_powerup(hit_enemy.x, hit_enemy.y)
               del(enemies, hit_enemy)
               kills += 1
               score += hit_enemy.maxhealth * killscorescaler
@@ -668,6 +706,8 @@ end
 
 function _update()
   update_mouse()
+
+  cooldown_powerups()
 
   control_player()
 
@@ -761,7 +801,7 @@ function draw_lava()
         ii = i+screenx - screen_shake_x + itersworld*10-t/10
 
         local y= sin(t/53+itersworld/7)*sin(ii/32)*4 + i%2*0.4
-        
+
         --local w=(cos((i+t)/64+iters/4)*0.5+1)*5
         w=5
         local offset = 12.5*iters + (screen_shake_y-screeny)%12.5
@@ -873,10 +913,19 @@ function _draw()
       spr(ret, mousex-3+ui_shake_x, mousey-3+ui_shake_y)
 
       print("score: "..flr(score), 2+ui_shake_x,2+ui_shake_y, 7)
+
+      -- powerup bar
+      if #active_powerups > 0 then
+        rect(20,110, 122,113, 7)
+        col = (active_powerups[1].type == "weapon") and 9 or 11
+        rectfill(21+ui_shake_x,111+ui_shake_y, lerp(21, 121, active_powerups[1].life/active_powerups[1].lifetime)+ui_shake_x,112+ui_shake_y, col)
+      end
+
+      -- health bar
       spr(46, 2+ui_shake_x,110+ui_shake_y, 2,2)
-      rect(20,115, 122,122, 7) --health bar
+      rect(20,115, 122,122, 7)
       col = (health>30) and 14 or 8
-      rectfill(21+ui_shake_x,116+ui_shake_y, lerp(20, 121, health/100)+ui_shake_x,121+ui_shake_y, col)
+      rectfill(21+ui_shake_x,116+ui_shake_y, lerp(21, 121, health/100)+ui_shake_x,121+ui_shake_y, col)
 
       spr(45, 105+ui_shake_x,1+ui_shake_y)--kills
       print(kills, 115+ui_shake_x,2+ui_shake_y, 7)
@@ -1093,14 +1142,14 @@ cc7ccccc000000000000000000000000000000000000000000000000000000000000000000000000
 1c1111c10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000eeeeee0eeeeee0
 111c1c110000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000eeeeee00eeeee0
 11c111c100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000eee0000eeee00
-0000000000000000eeeeeeee00000000000000000000000000000000000055000000000000000000000000000000000000000000000000000000000000000000
-000000000000bbb0eeeeeeee00000000000000000000000000000000000055500000000000000000000000000000000000000000000000000000000000000000
-000000000000bbb0eeeeeeee00006000000000000000000000006666600005550000000000000000000000000000000000000000000000000000000000000000
-00000000009ccccceeeeeeee06066660000600000006555505556666585500050000000000000000000000000000000000000000000000000000000000000000
-0000000000000c03eeeeeeee00666603000666630000050505556666555555550000000000000000000000000000000000000000000000000000000000000000
-000000000000000cee0000ee00066660066666060000050505676666555555550000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000666600000000500676666600000000000000000000000000000000000000000000000000000000000000000000000
-0000000000000000ee0000ee00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000000000000eeeeeeee00000000000000000000000000000000000055000066660000000000000000000000000000000000000000000000000000000000
+000000000000bbb0eeeeeeee000000000000000000000000000000000000555003bb8bb000000000000000000000000000000000000000000000000000000000
+000000000000bbb0eeeeeeee0000600000000000000000000000666660000555023888b000000000000000000000000000000000000000000000000000000000
+00000000009ccccceeeeeeee0606666000060000000655550555666658550005023bbbb000000000000000000000000000000000000000000000000000000000
+0000000000000c03eeeeeeee0066660300066663000005050555666655555555023b8bb000000000000000000000000000000000000000000000000000000000
+000000000000000cee0000ee0006666006666606000005050567666655555555023888b000000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000000066660000000050067666660000000023bbbb000000000000000000000000000000000000000000000000000000000
+0000000000000000ee0000ee00000000000000000000000000000000000000000066660000000000000000000000000000000000000000000000000000000000
 00333d0000333d0000333d0000333d00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 031112d0031112d0033333d0033333d0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00311300003113000033330000333300000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
