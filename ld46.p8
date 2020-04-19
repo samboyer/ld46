@@ -458,7 +458,7 @@ function apply_powerup(powerup)
     sfx(18)
     player[contents.key] = contents.value
   else
-    show_effect_text"fix apply_powerup"
+    show_effect_text("fix apply_powerup")
   end
   contents.type = powerup.type
   contents.life = contents.lifetime
@@ -467,9 +467,13 @@ end
 
 function cooldown_powerups()
   done_powerup = nil
+  weapon_cooled = false
   for p in all(active_powerups) do
-    p.life = max(p.life - 1, 0)
-    if (p.life == 0) done_powerup = p
+    if ((not weapon_cooled) or p.type != "weapon") then
+      p.life = max(p.life - 1, 0)
+      if (p.life == 0) done_powerup = p
+      if (p.type == "weapon") weapon_cooled = true
+    end
   end
   if (done_powerup != nil) then
     if (done_powerup.type == "weapon") then
@@ -745,6 +749,8 @@ function start_game()
 
   --TEMP
   add_random_powerup(130, 115)
+  add_random_powerup(138, 123)
+  add_random_powerup(146, 131)
   --spawn_enemy_offscreen()
 
   gamerunning = true
