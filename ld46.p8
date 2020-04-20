@@ -958,8 +958,8 @@ function shoot_bullet()
       dot=dx*(player.dx/pmag)+dy*(player.dy/pmag)
       if(dx*player.dx<0) dot=0
       if(dy*player.dy<0) dot=0
-      dx += dx*dot
-      dy += dy*dot
+      dx += dx*0.5*dot
+      dy += dy*0.5*dot
     end
     flip_x=false
     flip_y=false
@@ -1145,7 +1145,7 @@ function update_enemies()
         if e.class=="eat" then
           if(e.target.health != nil) e.target.health=max(e.target.health-e.damage, 0)
 
-          if(not gameover and t%15==9) oneshot_splash(e.x, e.y, {count=4,sprite=52+e.target.maincolor,gravity=0.001,lifetime=10})
+          if(not gameover and e.target.health != nil and t%15==9) oneshot_splash(e.x, e.y, {count=4,sprite=52+e.target.maincolor,gravity=0.001,lifetime=10})
         else
           if(e.phase+t)%gunershootspeed==0 then
             add_enemy_bullet(e)
