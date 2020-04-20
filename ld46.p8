@@ -696,8 +696,8 @@ end
 
 function add_enemy(x, y)
 
-  --local class = (wave>=2 and rnd(1)<0.3) and "gun" or "eat" --from wave 3 onwards
-  local class = (rnd(1)<0.5) and "gun" or "eat" --from wave 3 onwards
+  local class = (wave>=2 and rnd(1)<0.3) and "gun" or "eat" --from wave 3 onwards
+  --local class = (rnd(1)<0.5) and "gun" or "eat" --debug
 
   e = {
     x = x,
