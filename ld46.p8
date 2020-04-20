@@ -708,8 +708,8 @@ function add_flower_patch(x, y, num, radius, health)
     sprite=(rnd(1)<0.2) and flr(rnd(4))+2 or mainflower
     local xx, yy=get_random_point_around(x,y, radius)
     add(sprites, {
-      x=xx-4,
-      y=yy-4,
+      x=flr(xx-4),
+      y=flr(yy-4),
       alivesprite=sprite,
       sprite=sprite,
       flip_x=(rnd(1)<0.5)
@@ -1144,15 +1144,17 @@ function update_enemies()
 end
 
 function update_health()
-  health=100
+  health=1
   weakest_flower=nil --makes the compiler happy
 
   for f in all(flowers) do
-    if f.health<health then
+    frac = f.health/f.maxhealth
+    if frac<health then
       weakest_flower=f
-      health=f.health
+      health=frac
     end
   end
+  health*=100
 
   if isintro and not run_timer and weakest_flower==nil then --END INTRO
     music(-1)
@@ -1745,42 +1747,42 @@ shoot_texts={
 generic_texts={
   "you are a saucy boy", --keep first!
   "you legend",
-  -- "amazing",
-  -- "outstanding move",
-  -- "huzzah",
-  -- "exceptional",
-  -- "magnificent",
-  -- "phenomenal",
-  -- "tubular",
-  -- "stonks",
-  -- "you did the thing",
-  -- "sample text",
-  -- "hey! listen!",
-  -- "owo what's this",
-  -- "yeet",
-  -- "qpuS aligned",
-  -- "reticulating splines",
+  "amazing",
+  "outstanding move",
+  "huzzah",
+  "exceptional",
+  "magnificent",
+  "phenomenal",
+  "tubular",
+  "stonks",
+  "you did the thing",
+  "sample text",
+  "hey! listen!",
+  "owo what's this",
+  "yeet",
+  "qpuS aligned",
+  "reticulating splines",
 }
 
 gameover_texts={
   {"change da worldmy final messagegoodb ye", 15, 31},
-  -- "ded",
-  -- "*pacman death sound*",
-  -- "you died",
-  -- "game over",
-  -- "you lose",
-  -- {"mission failed. we'llget em next time",21},
-  -- "death",
-  -- {"dehydration comesto us all",17},
-  -- "you had two jobs",
-  -- "flower says goodbye",
-  -- "bloom-slain",
-  -- {"omae wa moushindeiru",11},
-  -- {"\"everything not savedwill be lost\"",21},
-  -- {"you lose(the flowers)",8},
-  -- "f",
-  -- {"all your baseare belong to slug",13},
-  -- "sad violin sounds",
+  "ded",
+  "*pacman death sound*",
+  "you died",
+  "game over",
+  "you lose",
+  {"mission failed. we'llget em next time",21},
+  "death",
+  {"dehydration comesto us all",17},
+  "you had two jobs",
+  "flower says goodbye",
+  "bloom-slain",
+  {"omae wa moushindeiru",11},
+  {"\"everything not savedwill be lost\"",21},
+  {"you lose(the flowers)",8},
+  "f",
+  {"all your baseare belong to slug",13},
+  "sad violin sounds",
   {"you are nota saucy boy",11} --keep last!
 }
 
