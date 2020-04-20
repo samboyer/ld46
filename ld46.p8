@@ -291,6 +291,7 @@ playerstarty = 104
 screenstartx = 128
 screenstarty = 30
 wateringcan_healperframe = 2
+retarget_time = 150 -- number of frames after which enemy switches targets
 gunnerstunduration = 20  --num. frames for stun to occur
 gunershootspeed = 36
 
@@ -641,7 +642,9 @@ function control_player()
   player.weapon = player.weapon or player.default_weapon
 
   player.weapon_cooldown = max(player.weapon_cooldown - 1, 0)
-  if (not player.weapon.melee and stunframes==0 and not isintro and lmbdown and player.weapon_cooldown == 0 and wateranimframes==0) then
+  melee = player.weapon.melee
+  if (melee == nil) melee = false
+  if (not melee and stunnedframes==0 and not isintro and lmbdown and player.weapon_cooldown == 0 and wateranimframes==0) then
     add_bullet()
     player.weapon_cooldown = player.weapon.cooldown
   end
@@ -712,6 +715,7 @@ function add_enemy(x, y)
     base_sprite = (class=="gun" and 88 or 104),
     class = class,
     phase = flr(rnd(30)),
+    retarget = retarget_time
   }
   if class=="gun" then
     e.target = player
@@ -728,7 +732,26 @@ function add_enemy(x, y)
     e.target = target
   end
 
+  target_enemy(e)
+
   add(enemies, e)
+end
+
+function target_enemy(e)
+  if (e.class=="gun" or rnd(1) < 0.3) then
+    e.target = player
+  else
+    target = nil
+    targetdist = 32767
+    for f in all(flowers) do
+      dist = distance_basic(e, f)
+      if (dist < targetdist) then
+        target = f
+        targetdist = dist
+      end
+    end
+    e.target = target
+  end
 end
 
 function add_random_powerup(x, y)
@@ -1027,6 +1050,11 @@ end
 function update_enemies()
   deadenemy = nil
   for e in all(enemies) do
+    e.retarget -= 1
+    if (e.retarget == 0) then
+      target_enemy(e)
+      e.retarget = retarget_time
+    end
     if (not e.dead and e.target != nil) then
       targetdist = distance(e, e.target)
       e.moving = (targetdist > e.attackdist)
@@ -1037,7 +1065,7 @@ function update_enemies()
         e.y += (e.maxspd / targetdist) * (e.target.y - e.y)
       else --doing action
         if e.class=="eat" then
-          e.target.health = max(e.target.health - e.damage, 0)
+          if (e.target.health != nil) e.target.health = max(e.target.health - e.damage, 0)
         else
           if (e.phase + t)%gunershootspeed==0 then
             add_enemy_bullet(e)
