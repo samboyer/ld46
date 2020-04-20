@@ -291,6 +291,7 @@ playerstarty = 104
 screenstartx = 128
 screenstarty = 30
 wateringcan_healperframe = 2
+retarget_time = 150 -- number of frames after which enemy switches targets
 gunnerstunduration = 20  --num. frames for stun to occur
 gunershootspeed = 36
 
@@ -681,7 +682,9 @@ function control_player()
   player.weapon = player.weapon or player.default_weapon
 
   player.weapon_cooldown = max(player.weapon_cooldown - 1, 0)
-  if (not player.weapon.melee and stunframes==0 and not isintro and lmbdown and player.weapon_cooldown == 0 and wateranimframes==0) then
+  melee = player.weapon.melee
+  if (melee == nil) melee = false
+  if (not melee and stunnedframes==0 and not isintro and lmbdown and player.weapon_cooldown == 0 and wateranimframes==0) then
     add_bullet()
     player.weapon_cooldown = player.weapon.cooldown
   end
@@ -752,6 +755,7 @@ function add_enemy(x, y)
     base_sprite = (class=="gun" and 88 or 104),
     class = class,
     phase = flr(rnd(30)),
+    retarget = retarget_time
   }
   if class=="gun" then
     e.target = player
@@ -768,7 +772,26 @@ function add_enemy(x, y)
     e.target = target
   end
 
+  target_enemy(e)
+
   add(enemies, e)
+end
+
+function target_enemy(e)
+  if (e.class=="gun" or rnd(1) < 0.3) then
+    e.target = player
+  else
+    target = nil
+    targetdist = 32767
+    for f in all(flowers) do
+      dist = distance_basic(e, f)
+      if (dist < targetdist) then
+        target = f
+        targetdist = dist
+      end
+    end
+    e.target = target
+  end
 end
 
 function add_random_powerup(x, y)
@@ -916,6 +939,14 @@ function add_bullet()
   dx = mousex + screenx - weapontipx
   dy = mousey + screeny - weapontipy
   mag = magnitude(dx,dy) * bulletspeed
+  dx /= mag
+  dy /= mag
+  pmag = magnitude(player.dx, player.dy)
+  dot = dx*(player.dx/pmag) + dy*(player.dy/pmag)
+  if (dx*player.dx < 0) dot = 0
+  if (dy*player.dy < 0) dot = 0
+  dx += dx*dot
+  dy += dy*dot
   flip_x = false
   flip_y = false
   if (player.weapon.bullet_sprite == nil) then
@@ -940,8 +971,8 @@ function add_bullet()
   local b = {
     x = weapontipx-4, --for sprite centering
     y = weapontipy-4,
-    dx = dx/mag,
-    dy = dy/mag,
+    dx = dx,
+    dy = dy,
     sprite_base = sprite_base,
     sprite = sprite_base,
     animated = animated,
@@ -1067,6 +1098,11 @@ end
 function update_enemies()
   deadenemy = nil
   for e in all(enemies) do
+    e.retarget -= 1
+    if (e.retarget == 0) then
+      target_enemy(e)
+      e.retarget = retarget_time
+    end
     if (not e.dead and e.target != nil) then
       targetdist = distance(e, e.target)
       e.moving = (targetdist > e.attackdist)
@@ -1077,7 +1113,7 @@ function update_enemies()
         e.y += (e.maxspd / targetdist) * (e.target.y - e.y)
       else --doing action
         if e.class=="eat" then
-          e.target.health = max(e.target.health - e.damage, 0)
+          if (e.target.health != nil) e.target.health = max(e.target.health - e.damage, 0)
         else
           if (e.phase + t)%gunershootspeed==0 then
             add_enemy_bullet(e)
@@ -1537,7 +1573,7 @@ function _draw()
       if(t_die<=50) then
         screenx = outCubic(t_die, oldscreenx, dstscreenx, 50)
         screeny = outCubic(t_die, oldscreeny, dstscreeny, 50)
-        if(t_die==50) show_effect_text(gameover_texts[flr(rnd(#gameover_texts))+1], true, false)
+        if(t_die==50) random_gameover_text()
       else
         effect_text_time = max(effect_text_time,1) --infinite text effect
         if (t_die%40<20) print("press \x97 to restart\n\n press \x8e for menu",31,100, 7) --1s on, 1s off
@@ -1592,8 +1628,12 @@ function random_effect_text(list, chance)
   end
 end
 
+function random_gameover_text()
+    show_effect_text(gameover_texts[flr(rnd(#gameover_texts))+1], true, false)
+end
+
 function show_effect_text(text, override, playsfx)
-  if (gameover) return
+  if (gameover and not override) return
   if(playsfx==nil) playsfx = true
   effect_text = text
   effect_text_time = 40
@@ -1607,51 +1647,60 @@ effect_text_time = 0
 effect_text_width = 6
 effect_count = 10
 function draw_effect_text()
+  if type(effect_text) == "string" then
+    draw_text(effect_text, 40)
+  else
+    text = effect_text[1]
+    split = effect_text[2]
+    draw_text(sub(text,1,split), 35)
+    draw_text(sub(text,split+1,#text), 45)
+  end
+end
+
+function draw_text(text, texty)
   effect_text_time -= 1;
 
-  textx = (128 - effect_text_width * #effect_text)\2 + (rnd(1)<0.1 and rnd(1)-.5 or 0)
-  texty = 40
+  textx = (128 - effect_text_width * #text)\2 + (rnd(1)<0.1 and rnd(1)-.5 or 0)
 
   if effect_text_effect < 4 then
-    for j=1,#effect_text do
+    for j=1,#text do
       text_offset = effect_text_width*(j-1)
       for i=0,6 do
         trig_oper = t/30 + j/5 + i/30
         offset_x = 2 * ((effect_text_effect % 2 == 0) and sin(trig_oper) or cos(trig_oper)) + text_offset
         offset_y = 5 * sin(trig_oper)
-        print(sub(effect_text,j,j), textx + offset_x + ui_shake_x, texty + offset_y + ui_shake_y, fierycolours[1+(i-effect_text_time\2)%#fierycolours])
+        print(sub(text,j,j), textx + offset_x + ui_shake_x, texty + offset_y + ui_shake_y, fierycolours[1+(i-effect_text_time\2)%#fierycolours])
       end
-      print(sub(effect_text,j,j), textx + text_offset + ui_shake_x, texty + ui_shake_y, (effect_text_effect > 1) and (t%2)*7 or 0)
+      print(sub(text,j,j), textx + text_offset + ui_shake_x, texty + ui_shake_y, (effect_text_effect > 1) and (t%2)*7 or 0)
     end
   elseif effect_text_effect < 8 then
-    for j=1,#effect_text do --per char
+    for j=1,#text do --per char
       text_offset = effect_text_width*(j-1)
       for i=1,6 do --per copy of char
         col = (effect_text_effect % 2 == 0) and fierycolours[1+(i-effect_text_time\2)%#fierycolours] or 9 --either rainbow or orange
         if effect_text_time < 33+i and effect_text_time>i then
-          print(sub(effect_text,j,j), textx - i + text_offset + ui_shake_x, texty + i + ui_shake_y, col)
+          print(sub(text,j,j), textx - i + text_offset + ui_shake_x, texty + i + ui_shake_y, col)
         end
       end
       if effect_text_time < 33 then
-        print(sub(effect_text,j,j), textx + text_offset + ui_shake_x, texty + ui_shake_y, (effect_text_effect > 5) and (t%2)*7 or 0)
+        print(sub(text,j,j), textx + text_offset + ui_shake_x, texty + ui_shake_y, (effect_text_effect > 5) and (t%2)*7 or 0)
       end
     end
   elseif effect_text_effect < 10 then
-    for j=1,#effect_text do
+    for j=1,#text do
       text_offset = effect_text_width*(j-1)
       offset_x = text_offset
       offset_y = 0
       col = fierycolours[1+(t+effect_text_time\2)%#fierycolours]
-      print_outline(sub(effect_text,j,j), textx + offset_x + ui_shake_x, texty + offset_y + ui_shake_y, (effect_text_effect%2 == 0) and 7 or col, (effect_text_effect%2 == 0) and col or 7)
+      print_outline(sub(text,j,j), textx + offset_x + ui_shake_x, texty + offset_y + ui_shake_y, (effect_text_effect%2 == 0) and 7 or col, (effect_text_effect%2 == 0) and col or 7)
     end
   end
 end
 
 water_texts = {
   "epic water combo",
-  "wow that's a nice flower",
+  {"wow that's a niceflower",17},
   "+10,000 nook miles",
-  "titchmarsh would be proud",
   "flower power",
   "splish splash",
   "hydro homie"
@@ -1667,7 +1716,7 @@ kill_texts = {
   "sluggernaut",
   "you monster",
   "rip and tear",
-  "death comes to us all",
+  {"death comesto us all",11},
   "yaass slayy",
   "slug is kil"
 }
@@ -1691,17 +1740,16 @@ generic_texts = {
 
 gameover_texts = {
   "game over",
-  "mission failed. we'll get em next time",
+  {"mission failed. we'llget em next time",21},
   "death",
-  "dehydration comes to us all",
+  {"dehydration comesto us all",17},
   "you had two jobs",
   "flower says goodbye",
   "bloom-slain",
-  "omae wa mou shindeiru",
-  "you are not a saucy boy",
-  "\"everything not saved will be lost\"",
+  {"omae wa moushindeiru",11},
+  {"you are nota saucy boy",11},
+  {"\"everything not savedwill be lost\"",21},
   "you lose (the flowers)",
-  "omae wa mo shindeiru",
   "f"
 }
 
