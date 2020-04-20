@@ -404,7 +404,7 @@ available_powerups = {
       sprite = 77,
       damage = 5,
       lifetime = 240,
-      shake = 5,
+      shake = 200,
       cooldown = 20,
       splash_radius = 0,
       sniper=true
@@ -418,9 +418,9 @@ available_powerups = {
       name = "shotgun", --shotgun
       sprites = 1,
       sprite = 76,
-      damage = 5,
+      damage = 35,
       lifetime = 240,
-      shake = 5,
+      shake = 30,
       cooldown = 20,
       splash_radius = 0,
       bulletspershot = 3
@@ -660,10 +660,10 @@ function control_player()
   player.weapon = player.weapon or player.default_weapon
 
   player.weapon_cooldown = max(player.weapon_cooldown - 1, 0)
-  melee = player.weapon.melee
+  local melee = player.weapon.melee
   if (melee == nil) melee = false
   if (not melee and stunnedframes==0 and not isintro and lmbdown and player.weapon_cooldown == 0 and wateranimframes==0) then
-    add_bullet()
+    shoot_bullet()
     player.weapon_cooldown = player.weapon.cooldown
   end
 
@@ -912,67 +912,70 @@ function start_game(frommenu)
   screen_shake = 10 --yaas
 end
 
-function add_bullet()
-  local n = player.weapon.bulletspershot or 1
-  dx = mousex + screenx - weapontipx
-  dy = mousey + screeny - weapontipy
-  mag = magnitude(dx,dy) * bulletspeed
-  dx /= mag
-  dy /= mag
-  if (player.dx > 0 or player.dy > 0) then
-    pmag = magnitude(player.dx, player.dy)
-    dot = dx*(player.dx/pmag) + dy*(player.dy/pmag)
-    if (dx*player.dx < 0) dot = 0
-    if (dy*player.dy < 0) dot = 0
-    dx += dx*dot
-    dy += dy*dot
-  end
-  flip_x = false
-  flip_y = false
-  if player.weapon.bullet_sprite == nil then
-    sprite_base = player.default_weapon.bullet_sprite
-    animated = player.default_weapon.bullet_animated
+function shoot_bullet()
+  if player.weapon.sniper then
+    --TODO LINE TEST
   else
-    sprite_base = player.weapon.bullet_sprite
-    animated = player.weapon.bullet_animated or false
-  end
+    local n = player.weapon.bulletspershot or 1
+    dx = mousex + screenx - weapontipx
+    dy = mousey + screeny - weapontipy
+    mag = magnitude(dx,dy) * bulletspeed
+    dx /= mag
+    dy /= mag
+    if (player.dx > 0 or player.dy > 0) then
+      pmag = magnitude(player.dx, player.dy)
+      dot = dx*(player.dx/pmag) + dy*(player.dy/pmag)
+      if (dx*player.dx < 0) dot = 0
+      if (dy*player.dy < 0) dot = 0
+      dx += dx*dot
+      dy += dy*dot
+    end
+    flip_x = false
+    flip_y = false
+    if player.weapon.bullet_sprite == nil then
+      sprite_base = player.default_weapon.bullet_sprite
+      animated = player.default_weapon.bullet_animated
+    else
+      sprite_base = player.weapon.bullet_sprite
+      animated = player.weapon.bullet_animated or false
+    end
 
-  if abs(dx)>abs(dy) then
-    if dx<0 then
-      flip_x = true
+    if abs(dx)>abs(dy) then
+      if dx<0 then
+        flip_x = true
+      end
+    else
+      sprite_base += (animated and 2 or 1)
+      if dy>0 then
+        flip_y = true
+        --sprite_base += 2--(animated and 2 or 1)
+      end
     end
-  else
-    sprite_base += (animated and 2 or 1)
-    if dy>0 then
-      flip_y = true
-      --sprite_base += 2--(animated and 2 or 1)
+    for i=1,n do
+      local b = {
+        x = weapontipx-4, --for sprite centering
+        y = weapontipy-4,
+        dx = dx * (n>1 and 1+rnd(1)/4 or 1),--for scattering
+        dy = dy * (n>1 and 1+rnd(1)/4 or 1),
+        sprite_base = sprite_base,
+        sprite = sprite_base,
+        animated = animated,
+        flip_x = flip_x,
+        flip_y = flip_y,
+        damage = player.weapon.damage,
+        life = bulletlife,
+        dead = false,
+        particles = player.weapon.particles,
+        splash_radius = player.weapon.splash_radius,
+      }
+      add(bullets, b)
     end
-  end
-  local b
-  for i=1,n do
-    b = {
-      x = weapontipx-4, --for sprite centering
-      y = weapontipy-4,
-      dx = dx * (n>1 and 1+rnd(1)/4 or 1),--for scattering
-      dy = dy * (n>1 and 1+rnd(1)/4 or 1),
-      sprite_base = sprite_base,
-      sprite = sprite_base,
-      animated = animated,
-      flip_x = flip_x,
-      flip_y = flip_y,
-      damage = player.weapon.damage,
-      life = bulletlife,
-      dead = false,
-      particles = player.weapon.particles,
-      splash_radius = player.weapon.splash_radius,
-    }
-    add(bullets, b)
   end
 
   sfx(0, -1)
   random_effect_text(shoot_texts, 0.05)
   screen_shake = player.weapon.shake
-  if(player.weapon.particles) oneshot_splash(b.x,b.y, b.particles, false)
+  if(player.weapon.particles) oneshot_splash(weapontipx-4,weapontipy-4, player.weapon.particles, false)
 end
 
 kill_sfx_this_frame = false
@@ -1104,7 +1107,7 @@ function update_enemies()
           end
         end
       end
-      e.dead = false -- TODO BULLET CHECK? MAYBE PER BULLET
+      e.dead = false
     else
       deadenemy = e
     end
@@ -1386,6 +1389,13 @@ function draw_player()
     end
   end
   draw_object(player, true)
+
+  if player.weapon.sniper then
+    dx = mousex - weapontipx + screenx
+    dy = mousey - weapontipy + screeny
+    x0, y0 = world_to_screen_coords(weapontipx, weapontipy)
+    line(x0, y0,  8)
+  end
 
   --weapon
   weaponsprite = (player.weapon.sprites == nil) and player.weapon.sprite or nil
