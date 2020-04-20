@@ -863,6 +863,8 @@ function start_game(frommenu)
 
   flowers = {}
   enemies = {}
+  powerups = {}
+  active_powerups = {}
   t=0
   time=0
   score=0
