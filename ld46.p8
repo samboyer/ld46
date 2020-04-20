@@ -1432,7 +1432,8 @@ function draw_player()
     end
   else
     weaponsprite = (p_weapon.sprites == nil) and p_weapon.sprite or nil
-    if isintro or can_t > 0 then
+    if(isintro) weaponsprite=-1
+    if can_t > 0 then
       if can_t > 5 and can_t < 25 then
         weaponsprite = 68
       else weaponsprite = 67
