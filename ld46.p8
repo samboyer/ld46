@@ -1590,9 +1590,10 @@ function _draw()
         local mag=magnitude(dx,dy)*0.2
 
         dir=get_dir8(dx, dy)
-        --flash arrow when health v low
-        if(health>40 or (health>15 and t%8>3) or (health<=15 and t%4>1)) spr(120+dir, 7+dx/mag, 114+dy/mag)
-
+        --flash arrow when health v low, or during intro
+        if not (isintro and t%8>3 and t<150) then
+         if(health>40 or (health>15 and t%8>3) or (health<=15 and t%4>1)) spr(120+dir, 7+dx/mag, 114+dy/mag)
+        end
       end
     end
     print("score: "..flr(score), 2+ui_shake_x,2+ui_shake_y, 7)
