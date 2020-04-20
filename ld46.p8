@@ -97,16 +97,12 @@ function emitter_wateringcan()
  end
 
 --p = {count,sprite,gravity,lifetime}
-function oneshot_splash(x, y, p, extrafx)
+function oneshot_splash(x, y, p)
   for i=0, p.count do
     local _r = rnd(1)-0.5
     local _vx = 0.008 * (sin(_r)+rnd(1)-0.5)
     local _vy = (cos(_r)+rnd(1)-0.5) * -0.008
     make_particle(axis((x - screenx)/127, _vx), axis((y - screeny)/127, _vy, p.gravity), {(p.sprite%16)*8, (p.sprite\16)*8}, axis(), p.lifetime+rnd(3))
-  end
-  if extrafx then
-    sfx(6)
-    screen_shake = 7
   end
  end
 -- END PARTICLE SYSTEM
@@ -422,16 +418,16 @@ available_powerups = {
     contents = {
       name = "satanic soaker", --water gun
       sprite = 65,
-      damage = 0,
+      damage = 5,
       lifetime = 240,
-      shake = 2,
-      cooldown = 10,
+      shake = 1,
+      cooldown = 2,
       splash_radius = 0,
       bullet_sprite = 32,
       bullet_animated = true,
       particles = {
         sprite = 48,
-        count = 10,
+        count = 3,
         gravity = 0.001,
         lifetime = 5,
       },
@@ -977,6 +973,7 @@ function shoot_bullet()
         dead = false,
         particles = player.weapon.particles,
         splash_radius = player.weapon.splash_radius,
+        shake = player.weapon.shake
       }
       add(bullets, b)
     end
@@ -985,7 +982,7 @@ function shoot_bullet()
   sfx(0, -1)
   random_effect_text(shoot_texts, 0.05)
   screen_shake = player.weapon.shake
-  if(player.weapon.particles) oneshot_splash(weapontipx-4,weapontipy-4, player.weapon.particles, false)
+  if(player.weapon.particles) oneshot_splash(weapontipx-4,weapontipy-4, player.weapon.particles)
 end
 
 kill_sfx_this_frame = false
@@ -1021,7 +1018,7 @@ function update_bullets()
       if (b.animated) b.sprite = b.sprite_base + (t%2) --32+(b.sprite-28) %8 --cycle sprite
       if b.life < 0 then
         b.dead = true
-        if(b.particles) oneshot_splash(b.x,b.y, b.particles, false)
+        if(b.particles) oneshot_splash(b.x,b.y, b.particles)
         if(b.splash_radius>0) do_splash_damage(b)
       else
           if b.evil then
@@ -1038,7 +1035,9 @@ function update_bullets()
             end
             if hit_enemy != nil then
               b.dead = true
-              if(b.particles) oneshot_splash(b.x,b.y, b.particles, true)
+              if(b.particles) oneshot_splash(b.x,b.y, b.particles)
+              sfx(6)
+              screen_shake = b.shake
               if b.splash_radius>0 then do_splash_damage(b)
               else hurt_enemy(hit_enemy, b.damage) end
             end
@@ -1160,7 +1159,7 @@ function increment_wave()
   wave_spawnseparation = wave_spawnduration/wave_enemiesthiswave
   wave_closenessthiswave = wave_enemycloseness + wave_enemyclosenessdelta * wave
   wave_timetilnextspawn = wave_spawnseparation
-  desiredmusic = max(2*(wave\2), 6)
+  desiredmusic = min(2*(wave\2), 6)
 end
 
 function wave_spawn_enemy()
@@ -1248,7 +1247,7 @@ function _update()
 
     if not isintro then
       score += 0.2
-      if (stat(24)%2==0 and stat(26)==0) music(desiredmusic) --if current music id is even numbered and we're at step 0,
+       if ((stat(24)%2==0 and stat(26)==0) or stat(24)==-1) music(desiredmusic) --if current music id is even numbered and we're at step 0, or no music is playing,
     end
 
     update_health()
@@ -1743,7 +1742,8 @@ generic_texts = {
   "owo what's this",
   "you are a saucy boy",
   "yeet",
-  "reticulating splines"
+  "qpuS aligned",
+  "reticulating splines",
 }
 
 gameover_texts = {
@@ -1944,8 +1944,8 @@ __sfx__
 010a00000c55018550245500c54018540245400c53018530245300c52018520245200c51018510245102451500500005000050000500005000050000500005000050000500005000050000500005000050000500
 010800000061101611026110461105611086110b6110f611156111b611236112a6113261136611386113661134611316112d6112961125611216111b611166110f6110b611076110561103611006100061000610
 000700001663035630336303d6303a630356202f6202a62024620246202262022620376302c630256302062019620156201361012610116100f6100e6100d6100b6100a600096000000000000000000000000000
-001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+011800002743227432274322343223432234322243222432204322043220432224322243222432234322343227432274322743223432234322343222432224322043220432204322243222432224322343223432
+011800002743227432274322343223432234322743227432284322843228432254322543225432284322843227432274322743223432234322343222432224322043220432204322043220432000020000200002
 010d00081305500000130550000013055000001305500000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 010d00000c055000050c055000050c055000050c055000050c055000050c055000050c055000000c055000000e055000000e055000000e055000000e055000001105500000110550000511055000051105500000
 000d000016150161551615000000161501615516150000001a1501a1551a150000001a1501a1551a1500000018150181551815000000181501815518150000001d1501d1551d150000001d1501d1551d15000000
@@ -1990,8 +1990,8 @@ __music__
 02 0c140e41
 01 0b150d55
 02 0c150e55
-00 41414141
-00 41414141
+01 190d1541
+02 1a0e1541
 00 3f0f4141
 03 3f0f1041
 00 41414141
