@@ -859,6 +859,8 @@ function start_game(frommenu)
 
   flowers = {}
   enemies = {}
+  powerups = {}
+  active_powerups = {}
   t=0
   time=0
   score=0
@@ -1721,6 +1723,14 @@ shoot_texts = {
 }
 
 generic_texts = {
+  "you legend",
+  "amazing",
+  "outstanding move",
+  "huzzah",
+  "exceptional",
+  "magnificent",
+  "phenomenal",
+  "tubular",
   "stonks",
   "you did the thing",
   "sample text",
@@ -1728,7 +1738,8 @@ generic_texts = {
   "owo what's this",
   "you are a saucy boy",
   "yeet",
-  "qpus aligned"
+  "qpus aligned",
+  "reticulating splines",
 }
 
 gameover_texts = {
