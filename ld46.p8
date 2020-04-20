@@ -314,6 +314,7 @@ isfacingdown = true
 oldenemycount = -1
 isintro = true
 stunnedframes = 0
+desiredmusic = 0 --id of loop to go to at the loop point
 
 bullets = {}
 --(x,y,dx,dy,sprite,life,dead)
@@ -413,28 +414,24 @@ available_powerups = {
     }
   },
   {
-    sprites = 1,
     sprite = 76,
     type = "weapon",
     contents = {
       name = "shotgun", --shotgun
-      sprites = 1,
       sprite = 76,
       damage = 35,
       lifetime = 240,
-      shake = 30,
+      shake = 5,
       cooldown = 20,
       splash_radius = 0,
       bulletspershot = 3
     }
   },
   {
-    sprites = 1,
     sprite = 65,
     type = "weapon",
     contents = {
       name = "satanic soaker", --water gun
-      sprites = 1,
       sprite = 65,
       damage = 0,
       lifetime = 240,
@@ -1174,6 +1171,7 @@ function increment_wave()
   wave_spawnseparation = wave_spawnduration/wave_enemiesthiswave
   wave_closenessthiswave = wave_enemycloseness + wave_enemyclosenessdelta * wave
   wave_timetilnextspawn = wave_spawnseparation
+  desiredmusic = max(2*(wave\2), 6)
 end
 
 function wave_spawn_enemy()
@@ -1265,7 +1263,10 @@ function _update()
       screeny = screeny + max(pys-128+screenborder,0) - max(screenborder-pys,0)
     end
 
-    if(not isintro) score += 0.2
+    if not isintro then
+      score += 0.2
+      if (stat(24)%2==0 and stat(26)==0) music(desiredmusic) --if current music id is even numbered and we're at step 0,
+    end
 
     update_health()
     update_wave()
@@ -2004,10 +2005,10 @@ __sfx__
 002700000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 __music__
 01 0b144a41
-00 0c144141
-00 0b140d41
-00 0c140e41
-00 0b150d55
+02 0c144141
+01 0b140d41
+02 0c140e41
+01 0b150d55
 02 0c150e55
 00 41414141
 00 41414141
