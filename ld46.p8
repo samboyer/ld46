@@ -438,7 +438,7 @@ available_powerups = {
     sprite = 155,
     type = "weapon",
     contents = {
-      name = "crucible", --crucible
+      name = "the crucible", --crucible
       sprites = 4,
       sprite = 155,
       melee = true,
@@ -1249,7 +1249,7 @@ function _update()
     update_health()
     update_wave()
     --critical health sfx
-    if(health<25 and t%16==0) sfx(4)
+    if(health<30 and t%16==0) sfx(4)
 
     if health==0 then
       --end the game
@@ -1328,7 +1328,6 @@ function draw_arrow(obj, dir)
 end
 
 function draw_enemies()
-  --(Bool and 96 or 100) + max((t \ 4)%6-2,0)
   for e in all(enemies) do
     if e.moving or gameover then
       e.sprite = e.base_sprite + (t \ 8)%2
@@ -1347,9 +1346,7 @@ function draw_lava()
       for iters=0,10 do
         itersworld = iters+screeny\12.5
         ii = i+screenx - screen_shake_x + itersworld*10-t/10
-
         local y= sin(t/53+itersworld/7)*sin(ii/32)*4 + i%2*0.4
-
         --local w=(cos((i+t)/64+iters/4)*0.5+1)*5
         w=5
         local offset = 12.5*iters + (screen_shake_y-screeny)%12.5
@@ -1385,10 +1382,10 @@ function draw_player()
   --bloomguy
   if gameover then --cry
     player.sprite = 97 + (t \ 10)%2
-
     tx = player.x + (t%10==0 and 2 or 4)
     ty = player.y+3
     if (t%5==0) make_particle(axis((tx - screenx)/127), axis((ty - screeny)/127,0,0.001), {0,24}, axis(), 10+rnd(3))
+
   else
     if playerstill then
       player.sprite = (isfacingdown and 96 or 100) + max((t \ 4)%6-2,0)
@@ -1420,25 +1417,15 @@ function draw_player()
     end
   end
 
-  if isweaponfacingleft then --right hand
-    if weaponsprite != nil then
-      draw_sprite(weaponsprite, player.x - 8, player.y)
-    else
-      for i=1,player.weapon.sprites do
-        draw_sprite(player.weapon.sprite + i - 1, player.x + 8*(i-player.weapon.sprites), player.y)
-      end
-    end
+  if weaponsprite != nil then
+    draw_sprite(weaponsprite, player.x + (isweaponfacingleft and -8 or 8), player.y, not isweaponfacingleft)
   else
-    if weaponsprite != nil then
-      draw_sprite(weaponsprite, player.x + 8, player.y, true) --left hand
-    else
-      for i=1,player.weapon.sprites do
-        draw_sprite(player.weapon.sprite + i - 1, player.x - 8*(i-player.weapon.sprites), player.y, true)
-      end
+    for i=1,player.weapon.sprites do
+      draw_sprite(player.weapon.sprite + i - 1, player.x + 8*(i-player.weapon.sprites)*(isweaponfacingleft and 1 or -1), player.y, not isweaponfacingleft)
     end
   end
 
-  if(stunnedframes>0) draw_sprite(52+(t\2)%2,player.x,player.y-2)
+  if(stunnedframes>0) draw_sprite(52+(t\2)%2,player.x,player.y-2) --stun stars
 end
 
 function _draw()
@@ -1450,7 +1437,7 @@ function _draw()
     print("eternal",51,58, 9)
     print("eternal",51,57, 7)
     if controlsshowing then
-      controlsstr = "controls:\n\x8b\x94\x91\x83/esdf: move\nlmb: shoot soaker\n\x8e : water plants\n\ndon't let the flowers die!"
+      controlsstr = "controls:\n\x8b\x94\x83\x91/esdf: move\nlmb: shoot gun\n\x8e : water plants\n\ndon't let the flowers die!"
       print_outline(controlsstr, 18,70,7)
       if (t%40<20) print_outline("press \x97 to begin",31,110, 7) --1s on, 1s off
     else
@@ -1830,14 +1817,14 @@ cc7ccccc8898555844444444000000000000a000000a000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000ffffffffffffffffffff44ff044044400004004004004004404004000000000000000000000000000005000000000000
-00000000000000000000000000000000ffffffffffff4fffffff4fff044004404044444044404400000440000000800000000000000000000005500000000000
-00000000000000000000000000000000fff4ffffff4f4ffffff44fff004000404400404004040404044004040000880000000888888888888888500000000000
-000000000000000000000000000000004ff4fffff44f4ffff444ff4f040444404004040004400040440040040008888888888899999999999999555500000000
-00000000000000000000000000000000f4f44f44ff44f44ffff4f4ff040004400004004444044040004040440008888888888899999999999999555500000000
-00000000000000000000000000000000f4f4f44ffff44ffffff444ff404040404440044004000400040400400000880000000888888888888888500000000000
-00000000000000000000000000000000f44444fffff4fffffff444ff404404444404400000440000404444000000800000000000000000000005500000000000
-00000000000000000000000000000000ff444ffffff4fffff44ff4ff400400000000040404440400040040000000000000000000000000000005000000000000
+00000000000000000000000000000000ffffffffffffffffffff44ff044044400004004004004004404004000000000000000000000000000000000000000000
+00000000000000000000000000000000ffffffffffff4fffffff4fff044004404044444044404400000440000000990000000000900900900550000000000000
+00000000000000000000000000000000fff4ffffff4f4ffffff44fff004000404400404004040404044004040009890000000999999999999995000000000000
+000000000000000000000000000000004ff4fffff44f4ffff444ff4f040444404004040004400040440040040009889999999888888888888885005000000000
+00000000000000000000000000000000f4f44f44ff44f44ffff4f4ff040004400004004444044040004040440098888888888888888888899955558500000000
+00000000000000000000000000000000f4f4f44ffff44ffffff444ff404040404440044004000400040400400009889999999888888888888885005000000000
+00000000000000000000000000000000f44444fffff4fffffff444ff404404444404400000440000404444000009890000000999999999999995000000000000
+00000000000000000000000000000000ff444ffffff4fffff44ff4ff400400000000040404440400040040000000990000000000900900900550000000000000
 0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee00000000
 0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee00000000
 0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee00000000
