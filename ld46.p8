@@ -441,6 +441,9 @@ available_powerups = {
       sprite = 77,
       damage = 5,
       lifetime = 240,
+      shake = 5,
+      cooldown = 20,
+      splash_radius = 0,
       sniper=true
     }
   },
@@ -454,6 +457,9 @@ available_powerups = {
       sprite = 76,
       damage = 5,
       lifetime = 240,
+      shake = 5,
+      cooldown = 20,
+      splash_radius = 0,
       bulletspershot = 3
     }
   },
@@ -467,6 +473,9 @@ available_powerups = {
       sprite = 65,
       damage = 5,
       lifetime = 240,
+      shake = 5,
+      cooldown = 10,
+      splash_radius = 0,
       bullet_sprite = 32,
       bullet_animated = true,
     }
