@@ -4,6 +4,7 @@ __lua__
 -- bloom eternal
 -- slay slugs and keep your flowers alive
 
+--sprite rotation by jihem
 function rspr(sx,sy,x,y,w, sa,ca)
   --local ca,sa=cos(a),sin(a)
   local srcx,srcy,addr,pixel_pair
@@ -29,8 +30,7 @@ function rspr(sx,sy,x,y,w, sa,ca)
   end
 end
 
-
--- PICO-tween
+-- PICO-tween https://github.com/JoebRogers/PICO-Tween
 function outCubic(t, b, c, d)
   a = t / d - 1
   return c * (a*a*a + 1) + b
@@ -45,7 +45,6 @@ function update_particles() --used to be update60
 end
 function draw_particles() --used to be _draw
  foreach(particles, draw_particle)
- --print(#particles, 0, 92, 7)
 end
 
 function make_particle(_x, _y, _c, _r, _maxl)
@@ -69,7 +68,6 @@ function axis(_n, _v, _a, _i)
  }
 end
 function update_particle(p)
- -- Update all axis
  local _l = p.l / p.maxl
  _r = get_axis(p.r, _l)
  update_axis(p.x)
@@ -110,13 +108,9 @@ function is_texture_axis(a)
  return a.n == nil
 end
 
--- function demo_emitter_fireflies()
---  make_particle(axis(0.4+rnd(0.2)), axis(0.4+rnd(0.2), rnd(0.001)+0.001), {35, 8}, {36+flr(rnd(3.99)), 16}, 600)
--- end
-
-function emitter_wateringcan()
+function emitter_can()
   local _r = 0.12 + rnd(0.3)
-  if not isweaponfacingleft then _r = -_r end
+  if not isweaponleft then _r = -_r end
   local _vx = 0.004 * sin(_r)
   local _vy = cos(_r) * -0.004
   make_particle(axis((weapontipx - screenx)/127, _vx), axis((weapontipy - screeny)/127, _vy, 0.0003), {0, 24}, axis(), 10+rnd(5))
@@ -144,11 +138,9 @@ end
 for df_i=0,df_d do df_f[df_i]=df_i>df_d-df_w and 8 or 0 end
 function draw_doomfire()
   for df_x=0,df_w do for df_y=0,df_w-1 do df_s(df_y*df_w+df_x) end end
-  --for x=0,d do pset(x%w,flr(x/w),p[f[x]]) end
   for df_x=0,df_d do
     xx = df_x%df_w
     yy = flr(df_x/df_w)
-    --pset(2*xx,2*yy,p[f[x]])
     rectfill(2*xx,2*yy,2*xx+2,2*yy+2,df_p[df_f[df_x]])
   end
 end
@@ -257,31 +249,32 @@ pal(2,131,1)
 cls() -- clear screen
 
 --CONSTANTS/CONFIG
+maxval=32767
 screenborder = 32 -- how close guy can get before moving screen
 bulletspeed = 0.5
 bulletlife = 40 -- life of bullet in frames
 worldsizex = 384 --size of arena in pixels
 worldsizey = 256
 killscorescaler = 0.2 --%age of enemy max health converted to points
-wateringcanscorescaler = 0.2 --%age of watering can healing converted to points
+canscorescaler = 0.2 --%age of watering can healing converted to points
 powerup_chance = 0.2 --chance a killed enemy will drop a powerup
 screen_shake_decay = 1
 playerstartx = 188
 playerstarty = 104
 screenstartx = 128
 screenstarty = 30
-wateringcan_healperframe = 2
+can_healperframe = 2
 retarget_time = 150 -- number of frames after which enemy switches targets
 gunnerstunduration = 20  --num. frames for stun to occur
 gunershootspeed = 36
 
-wave_downtime = 6 --time between waves (secs)
-wave_spawnduration = 5 --time for enemies to spawn (secs)
-wave_enemycountbase = 3 --base num of enemies per wave
+wave_downtime = 6 --time between waves (s)
+wave_spawnduration = 5 --time for enemies to spawn (s)
+wave_enemycountbase = 3 --base #enemies per wave
 wave_enemycountdelta = 1
-wave_enemycloseness = 48 --how far in pixels worms can appear from the 'wave origin'
-wave_enemyclosenessdelta = 8
-wave_originrubberband = 256 --max distance the enemy origin can be
+wave_originsizebase = 48 --dist from 'wave origin' (px)
+wave_originsizedelta = 8
+wave_originrubberband = 256 --max distance of enemy origin from camera
 
 player = {
   dx = 0,
@@ -309,7 +302,7 @@ for k,v in pairs(player) do
   player_original_stats[k] = v
 end
 
-player.weapon = player.default_weapon
+p_weapon = player.default_weapon
 
 --VARIABLES
 lmbdown = false
@@ -320,12 +313,12 @@ screeny = screenstarty
 screen_shake = 0
 weapontipx = 0
 weapontipy = 0
-isweaponfacingleft = false
+isweaponleft = false
 isfacingdown = true
 oldenemycount = -1
 isintro = true
 stunnedframes = 0
-desiredmusic = 0 --id of loop to go to at the loop point
+desiredmusic = 0 --loop id to schedule
 
 bullets = {}
 --(x,y,dx,dy,sprite,life,dead)
@@ -481,56 +474,56 @@ tumbleweeds = {}
 score = 0
 kills = 0
 health = 100
-wave = 0 --more like 'waves survived', ie first wave is wave 0 until all enemies cleared.
+wave = 0 --#waves survived (lags behind)
 
 playerstill = true --for idle animation
-wateranimframes = 0 --frames remaining of watering can anim
+can_t = 0 --frames remaining of watering can anim
 watersuccess = false --did the watering get a flower
 weakest_flower = nil --ref to weakest flower obj
-t = 0 --frame count
+t = 0 --frame count, for anims (not to be trusted!)
 time = 0 --game timer in s
-gamerunning = false --is gameplay allowed?
-gameover = false --discerns between menu and you died screen
-controlsshowing = false --discerns between title screen and controls screen
-startcountdown = nil --countdown for animations, starts when player hits x on controls
+gamerunning = false
+gameover = false
+controlsscreen = false
+startcountdown = nil --countdown for animations
 startcountdownframes = 45
 startcountdown2 = nil --countdown for fade in
 
 wave_nextwavestarttime = -1
-wave_enemiesthiswave = 0
-wave_closenessthiswave = 0
+wave_enemycount = 0
+wave_originsize = 0
 wave_originx = 0
 wave_originy = 0
 wave_spawned = 0
-wave_spawnseparation = 0
-wave_timetilnextspawn = 0
+wave_spawnwait = 0
+wave_nextspawntime = 0
 
 --UPDATE FUNCTIONS
 
 
-function start_wateringcan()
+function start_can()
   watersuccess = false
-  wateranimframes = 30
+  can_t = 30
   sfx(7)
-  make_emitter(emitter_wateringcan, 35, 1)
+  make_emitter(emitter_can, 35, 1)
 end
 
-function update_wateringcan()
+function update_can()
   water = {
-    x = player.x + (isweaponfacingleft and -4 or 12),
+    x = player.x + (isweaponleft and -4 or 12),
     y = player.y + 4
   }
 
   for f in all(flowers) do
     if distance(water, f) < 14 then
       watersuccess = true
-      f.health = min(f.health + wateringcan_healperframe, f.maxhealth)
-      score += wateringcan_healperframe * wateringcanscorescaler
+      f.health = min(f.health + can_healperframe, f.maxhealth)
+      score += can_healperframe * canscorescaler
     end
   end
 
-  wateranimframes -= 1
-  if (wateranimframes==0 and watersuccess) then
+  can_t -= 1
+  if (can_t==0 and watersuccess) then
     random_effect_text(water_texts)
   end
 end
@@ -541,7 +534,7 @@ function apply_powerup(powerup)
     contents[k] = v
   end
   if powerup.type == "weapon" then
-    player.weapon = contents
+    p_weapon = contents
     sfx(10)
   elseif powerup.type == "stat" then
     sfx(18)
@@ -595,8 +588,8 @@ function control_player()
 
   if stunnedframes == 0 then
     if gamerunning and not(isintro and run_timer) then
-      if btn(4) and wateranimframes == 0 then
-        start_wateringcan()
+      if btn(4) and can_t == 0 then
+        start_can()
       end
 
       inputx=0
@@ -606,7 +599,7 @@ function control_player()
       if (btn(2,0) or btn(2,1)) inputy -= 1
       if (btn(3,0) or btn(3,1)) inputy += 1
 
-      if wateranimframes == 0 then
+      if can_t == 0 then
         x=inputx
         y=inputy
       end
@@ -659,8 +652,8 @@ function control_player()
   -- powerups
   collected_powerup = nil
   for p in all(powerups) do
-    if (collected_powerup == nil and distance_basic(player,p) < 8) then
-      collected_powerup = p
+    for i=0,(p.sprites==nil and 0 or p.sprites-1) do
+      if(collected_powerup == nil and distance_basic(player,{x=p.x+i*8,y=p.y}) < 8) collected_powerup = p
     end
   end
   if collected_powerup != nil then
@@ -677,26 +670,26 @@ function control_player()
   end
 
   -- current weapon
-  player.weapon = nil
+  p_weapon = nil
   for p in all(active_powerups) do
-    if (player.weapon == nil and p.type == "weapon") player.weapon = p
+    if (p_weapon == nil and p.type == "weapon") p_weapon = p
   end
-  player.weapon = player.weapon or player.default_weapon
+  p_weapon = p_weapon or player.default_weapon
 
   player.weapon_cooldown = max(player.weapon_cooldown - 1, 0)
-  local melee = player.weapon.melee
+  local melee = p_weapon.melee
   if (melee == nil) melee = false
-  if (not melee and stunnedframes==0 and not isintro and lmbdown and player.weapon_cooldown == 0 and wateranimframes==0) then
+  if (not melee and stunnedframes==0 and not isintro and lmbdown and player.weapon_cooldown == 0 and can_t==0) then
     shoot_bullet()
-    player.weapon_cooldown = player.weapon.cooldown
+    player.weapon_cooldown = p_weapon.cooldown
   end
 
-  if player.weapon.melee then
-    if (player.weapon.name == "chainsaw") screen_shake = max(screen_shake, 1)
+  if p_weapon.melee then
+    if (p_weapon.name == "chainsaw") screen_shake = max(screen_shake, 1)
     for e in all(enemies) do
-      if distance_basic(player,e) < player.weapon.range then
-        hurt_enemy(e, player.weapon.damage)
-        if (player.weapon.name == "chainsaw") screen_shake = min(screen_shake+2, 20)
+      if distance_basic(player,e) < p_weapon.range then
+        hurt_enemy(e, p_weapon.damage)
+        if (p_weapon.name == "chainsaw") screen_shake = min(screen_shake+2, 20)
       end
     end
   end
@@ -763,7 +756,7 @@ function add_enemy(x, y)
     e.target = player
   else
     target = nil
-    targetdist = 32767
+    targetdist = maxval
     for f in all(flowers) do
       dist = distance_basic(e, f)
       if dist < targetdist then
@@ -784,7 +777,7 @@ function target_enemy(e)
     e.target = player
   else
     target = nil
-    targetdist = 32767
+    targetdist = maxval
     for f in all(flowers) do
       dist = distance_basic(e, f)
       if dist < targetdist then
@@ -865,7 +858,7 @@ end
 function open_menu()
   gameover = false
   gamerunning = false
-  controlsshowing = false
+  controlsscreen = false
   music(40)
   reset_doomfire()
 end
@@ -877,7 +870,7 @@ end
 function start_game(frommenu)
   player.x = playerstartx
   player.y = playerstarty
-  player.weapon = player.default_weapon
+  p_weapon = player.default_weapon
   screenx = screenstartx
   screeny = screenstarty
   isintro = frommenu
@@ -939,19 +932,19 @@ function shoot_bullet()
   dy = mousey + screeny - weapontipy
   mag = magnitude(dx,dy)
 
-  if player.weapon.sniper then
+  if p_weapon.sniper then
     for e in all(enemies) do
       --|(e-tip) X dir|/|dir|, cross cancels to a1b2-a2b1
       vx = e.x-weapontipx
       vy = e.y-weapontipy
       dist = (vx*dy - vy*dx)/mag
       dot = vx*dx + vy*dy
-      if(dist<3 and dot>0) hurt_enemy(e, player.weapon.damage)
+      if(dist<3 and dot>0) hurt_enemy(e, p_weapon.damage)
     end
   else
     dx /= mag * bulletspeed
     dy /= mag * bulletspeed
-    local n = player.weapon.bulletspershot or 1
+    local n = p_weapon.bulletspershot or 1
     if (player.dx > 0 or player.dy > 0) then
       pmag = magnitude(player.dx, player.dy)
       dot = dx*(player.dx/pmag) + dy*(player.dy/pmag)
@@ -962,12 +955,12 @@ function shoot_bullet()
     end
     flip_x = false
     flip_y = false
-    if player.weapon.bullet_sprite == nil then
+    if p_weapon.bullet_sprite == nil then
       sprite_base = player.default_weapon.bullet_sprite
       animated = player.default_weapon.bullet_animated
     else
-      sprite_base = player.weapon.bullet_sprite
-      animated = player.weapon.bullet_animated or false
+      sprite_base = p_weapon.bullet_sprite
+      animated = p_weapon.bullet_animated or false
     end
 
     if abs(dx)>abs(dy) then
@@ -992,12 +985,12 @@ function shoot_bullet()
         animated = animated,
         flip_x = flip_x,
         flip_y = flip_y,
-        damage = player.weapon.damage,
+        damage = p_weapon.damage,
         life = bulletlife,
         dead = false,
-        particles = player.weapon.particles,
-        splash_radius = player.weapon.splash_radius,
-        shake = player.weapon.shake
+        particles = p_weapon.particles,
+        splash_radius = p_weapon.splash_radius,
+        shake = p_weapon.shake
       }
       add(bullets, b)
     end
@@ -1005,8 +998,8 @@ function shoot_bullet()
 
   sfx(0, -1)
   random_effect_text(shoot_texts, 0.05)
-  screen_shake = player.weapon.shake
-  if(player.weapon.particles) oneshot_splash(weapontipx-4,weapontipy-4, player.weapon.particles)
+  screen_shake = p_weapon.shake
+  if(p_weapon.particles) oneshot_splash(weapontipx-4,weapontipy-4, p_weapon.particles)
 end
 
 kill_sfx_this_frame = false
@@ -1178,16 +1171,16 @@ end
 
 function increment_wave()
   wave+=1
-  wave_enemiesthiswave = wave_enemycountbase + wave_enemycountdelta * wave
+  wave_enemycount = wave_enemycountbase + wave_enemycountdelta * wave
   wave_spawned = 0
-  wave_spawnseparation = wave_spawnduration/wave_enemiesthiswave
-  wave_closenessthiswave = wave_enemycloseness + wave_enemyclosenessdelta * wave
-  wave_timetilnextspawn = wave_spawnseparation
+  wave_spawnwait = wave_spawnduration/wave_enemycount
+  wave_originsize = wave_originsizebase + wave_originsizedelta * wave
+  wave_nextspawntime = wave_spawnwait
   desiredmusic = min(2*(wave\2), 6)
 end
 
 function wave_spawn_enemy()
-  local x,y = get_random_point_around(wave_originx, wave_originy, wave_closenessthiswave)
+  local x,y = get_random_point_around(wave_originx, wave_originy, wave_originsize)
   add_enemy(x, y)
   wave_spawned+=1
 end
@@ -1202,12 +1195,12 @@ function update_wave()
       wave_originx, wave_originy = get_random_point_around(player.x, player.y, wave_originrubberband, 128)
     end
   else --mid-wave time
-    if wave_spawned != wave_enemiesthiswave then --mid-spawn
+    if wave_spawned != wave_enemycount then --mid-spawn
 
-      wave_timetilnextspawn -= 0.0333333333
-      if wave_timetilnextspawn<=0 then
+      wave_nextspawntime -= 0.0333333333
+      if wave_nextspawntime<=0 then
         wave_spawn_enemy()
-        wave_timetilnextspawn = wave_spawnseparation
+        wave_nextspawntime = wave_spawnwait
       end
 
     else --cleanup time
@@ -1233,18 +1226,18 @@ function _update()
 
   if(not isintro) update_enemies()
 
-  isweaponfacingleft = mousex <= player.x - screenx
+  isweaponleft = mousex <= player.x - screenx
   isfacingdown = mousey >= player.y - screeny
 
-  if wateranimframes > 0 then
-    update_wateringcan()
-    if (inputx!=0) isweaponfacingleft = inputx<=0
+  if can_t > 0 then
+    update_can()
+    if (inputx!=0) isweaponleft = inputx<=0
     if (inputy!=0) isfacingdown = inputy>=0
   end
 
   if gamerunning then
 
-    if(run_timer) time += 0.03333333333333333333
+    if(run_timer) time += 0.0333333333
 
     if(isintro and t==60) show_effect_text("water plants", true)
 
@@ -1300,13 +1293,13 @@ function _update()
       end
     else --main menu
       if btnp(5) then
-        if (controlsshowing and startcountdown == nil) then
+        if (controlsscreen and startcountdown == nil) then
           startcountdown = startcountdownframes
           music(-1)
           sfx(22)
           sfx(23)
           kill_doomfire()
-        else controlsshowing = true end
+        else controlsscreen = true end
       end
     end
   end
@@ -1333,18 +1326,18 @@ end
 
 --DRAW FUNCTIONS
 
-function world_to_screen_coords(x,y)
+function world_to_screen(x,y)
   return x - screenx + screen_shake_x, y - screeny + screen_shake_y
 end
 
 function draw_sprite(spriteno, x, y, flip_x)
   flip_x = flip_x or false
-  spr(spriteno, x - screenx + screen_shake_x, y - screeny + screen_shake_y, 1, 1, flip_x)
+  x,y = world_to_screen(x,y)
+  spr(spriteno, x, y, 1, 1, flip_x)
 end
 
 function draw_object(obj, draw_shadow)
-  local x = obj.x - screenx + screen_shake_x
-  local y = obj.y - screeny + screen_shake_y
+  x,y = world_to_screen(obj.x,obj.y)
   if (draw_shadow) spr(66, x,y+1)
   sprites = obj.sprites or 1
   for i=1,sprites do
@@ -1376,7 +1369,6 @@ function draw_lava()
         itersworld = iters+screeny\12.5
         ii = i+screenx - screen_shake_x + itersworld*10-t/10
         local y= sin(t/53+itersworld/7)*sin(ii/32)*4 + i%2*0.4
-        --local w=(cos((i+t)/64+iters/4)*0.5+1)*5
         w=5
         local offset = 12.5*iters + (screen_shake_y-screeny)%12.5
         rectfill(i,offset-w+y,i,offset+w+y, 9)
@@ -1384,8 +1376,7 @@ function draw_lava()
   end
 end
 
-oldplayerposes = {{1000,1000},{1000,1000},{1000,1000},{1000,1000}}
-oldpos = {1000,1000}
+ghosts = {{maxval,maxval},{maxval,maxval},{maxval,maxval},{maxval,maxval}}
 
 function draw_player()
 
@@ -1399,11 +1390,11 @@ function draw_player()
   if show_ghosts then
     --draw ghosts
     for i=4,1,-1 do
-      draw_sprite(84, oldplayerposes[i][1], oldplayerposes[i][2])
+      draw_sprite(84, ghosts[i][1], ghosts[i][2])
       if i==1 then --update chost
-        oldplayerposes[i] = oldpos
+        ghosts[i] = oldpos
       else
-        oldplayerposes[i] = oldplayerposes[i-1]
+        ghosts[i] = ghosts[i-1]
       end
     end
   end
@@ -1425,21 +1416,21 @@ function draw_player()
   end
   draw_object(player, true)
 
-  local tipoffx = player.weapon.tipx or -5
-  local tipoffy = player.weapon.tipy or 3
-  weapontipx = player.x + (isweaponfacingleft and tipoffx or 8-tipoffx)
+  local tipoffx = p_weapon.tipx or -5
+  local tipoffy = p_weapon.tipy or 3
+  weapontipx = player.x + (isweaponleft and tipoffx or 8-tipoffx)
   weapontipy = player.y + tipoffy
 
-  if player.weapon.sniper then
-    x0, y0 = world_to_screen_coords(weapontipx, weapontipy)
+  if p_weapon.sniper then
+    x0, y0 = world_to_screen(weapontipx, weapontipy)
     dx = mousex - x0
     dy = mousey - y0
     line(x0, y0,x0+dx*128, y0+dy*128, 8)
   end
 
   --weapon
-  if player.weapon.name =="the crucible" then
-    xx,yy = world_to_screen_coords(player.x, player.y)
+  if p_weapon.name =="the crucible" then
+    xx,yy = world_to_screen(player.x, player.y)
     dx = mousex - xx
     dy = mousey - yy
     mag = magnitude(dx,dy)
@@ -1450,19 +1441,19 @@ function draw_player()
       rspr(112-i*8,72, xx- (8*i-4)*ca-3+3*sa,yy+(8*i)*sa-4+3*ca, 2, sa,ca)
     end
   else
-    weaponsprite = (player.weapon.sprites == nil) and player.weapon.sprite or nil
-    if isintro or wateranimframes > 0 then
-      if wateranimframes > 5 and wateranimframes < 25 then
+    weaponsprite = (p_weapon.sprites == nil) and p_weapon.sprite or nil
+    if isintro or can_t > 0 then
+      if can_t > 5 and can_t < 25 then
         weaponsprite = 68
       else weaponsprite = 67
       end
     end
 
     if weaponsprite != nil then
-      draw_sprite(weaponsprite, player.x + (isweaponfacingleft and -8 or 8), player.y, not isweaponfacingleft)
+      draw_sprite(weaponsprite, player.x + (isweaponleft and -8 or 8), player.y, not isweaponleft)
     else
-      for i=1,player.weapon.sprites do
-        draw_sprite(player.weapon.sprite + i - 1, player.x + 8*(i-player.weapon.sprites)*(isweaponfacingleft and 1 or -1), player.y, not isweaponfacingleft)
+      for i=1,p_weapon.sprites do
+        draw_sprite(p_weapon.sprite + i - 1, player.x + 8*(i-p_weapon.sprites)*(isweaponleft and 1 or -1), player.y, not isweaponleft)
       end
     end
   end
@@ -1478,7 +1469,7 @@ function _draw()
     map(112,0,0)
     print("eternal",51,58, 9)
     print("eternal",51,57, 7)
-    if controlsshowing then
+    if controlsscreen then
       controlsstr = "controls:\n\x8b\x94\x83\x91/esdf: move\nlmb: shoot gun\n\x8e : water plants\n\ndon't let the flowers die!"
       print_outline(controlsstr, 18,70,7)
       if (t%40<20) print_outline("press \x97 to begin",31,110, 7) --1s on, 1s off
@@ -1543,8 +1534,8 @@ function _draw()
     --world-space flower healthbars
     for f in all(flowers) do
       if gamerunning and f.health < f.maxhealth then
-        x0, y0 = world_to_screen_coords(f.x - 8,f.y - 9)
-        x1,y1 = world_to_screen_coords(f.x + 8,f.y - 8)
+        x0, y0 = world_to_screen(f.x - 8,f.y - 9)
+        x1,y1 = world_to_screen(f.x + 8,f.y - 8)
         --rect(x0,y0,x1,y1, 7) --health bar
         frac = f.health/f.maxhealth
         col = (frac<0.5) and 8 or 9
