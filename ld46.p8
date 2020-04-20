@@ -1663,9 +1663,9 @@ function draw_effect_text()
     draw_text(effect_text, 40)
   else
     text = effect_text[1]
-    split = effect_text[2]
-    draw_text(sub(text,1,split), 35)
-    draw_text(sub(text,split+1,#text), 45)
+    for i=2,#effect_text+1 do
+      draw_text(sub(text, ((i==2) and 0 or effect_text[i-1])+1, (i==#effect_text+1) and #text or effect_text[i]), 35+10*(i-2))
+    end
   end
 end
 
@@ -1761,7 +1761,12 @@ generic_texts = {
 }
 
 gameover_texts = {
+  {"change da worldmy final messagegoodb ye", 15, 31},
+  "ded",
+  "*pacman death sound*",
+  "you died",
   "game over",
+  "you lose",
   {"mission failed. we'llget em next time",21},
   "death",
   {"dehydration comesto us all",17},
@@ -1772,7 +1777,9 @@ gameover_texts = {
   {"you are nota saucy boy",11},
   {"\"everything not savedwill be lost\"",21},
   {"you lose(the flowers)",8},
-  "f"
+  "f",
+  {"all your baseare belong to slug",13},
+  "sad violin sounds"
 }
 
 __gfx__
