@@ -899,6 +899,14 @@ function add_bullet()
   dx = mousex + screenx - weapontipx
   dy = mousey + screeny - weapontipy
   mag = magnitude(dx,dy) * bulletspeed
+  dx /= mag
+  dy /= mag
+  pmag = magnitude(player.dx, player.dy)
+  dot = dx*(player.dx/pmag) + dy*(player.dy/pmag)
+  if (dx*player.dx < 0) dot = 0
+  if (dy*player.dy < 0) dot = 0
+  dx += dx*dot
+  dy += dy*dot
   flip_x = false
   flip_y = false
   if (player.weapon.bullet_sprite == nil) then
@@ -923,8 +931,8 @@ function add_bullet()
   local b = {
     x = weapontipx-4, --for sprite centering
     y = weapontipy-4,
-    dx = dx/mag,
-    dy = dy/mag,
+    dx = dx,
+    dy = dy,
     sprite_base = sprite_base,
     sprite = sprite_base,
     animated = animated,
