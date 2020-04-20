@@ -1757,13 +1757,22 @@ shoot_texts = {
 }
 
 generic_texts = {
+  "you legend",
+  "amazing",
+  "outstanding move",
+  "huzzah",
+  "exceptional",
+  "magnificent",
+  "phenomenal",
+  "tubular",
   "stonks",
   "you did the thing",
   "sample text",
   "hey! listen!",
   "owo what's this",
   "you are a saucy boy",
-  "yeet"
+  "yeet",
+  "reticulating splines"
 }
 
 gameover_texts = {
