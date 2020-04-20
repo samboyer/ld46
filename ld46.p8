@@ -1,14 +1,8 @@
 pico-8 cartridge // http://www.pico-8.com
 version 21
 __lua__
--- Ludum Dare 46
--- by Josh S and Sam B
-
--- (^can change later)
-
--- FLAGS
--- 0x1 COLLIDABLE
-
+-- bloom eternal
+-- slay slugs and keep your flowers alive
 
 -- PICO-tween
 function outCubic(t, b, c, d)
@@ -52,8 +46,6 @@ function update_particle(p)
  -- Update all axis
  local _l = p.l / p.maxl
  _r = get_axis(p.r, _l)
- --update_axis(p.x, cos(_r), -p.y.v * sin(_r))
- --update_axis(p.y, cos(_r), p.x.v * sin(_r))
  update_axis(p.x)
  update_axis(p.y)
  update_axis(p.c)
@@ -117,12 +109,9 @@ function oneshot_splash(x, y, p, extrafx)
     screen_shake = 7
   end
  end
-
 -- END PARTICLE SYSTEM
 
 --doomfire by fernandojsg (slightly altered)
---for x=0,d do s(x) end
---poke(0x5f2c,3)
 df_f={}df_p={0,1,1,4,8,9,10,7}df_w=64
 df_d=df_w*df_w
 function df_s(df_t)
@@ -851,11 +840,6 @@ function get_random_point_around(cx,cy,maxradius, minradius)
   return x,y
 end
 
-function spawn_enemy_offscreen()
-  local x,y = get_random_point(true,true)
-  add_enemy(x, y)
-end
-
 function open_menu()
   gameover = false
   gamerunning = false
@@ -918,7 +902,6 @@ function start_game(frommenu)
   for i=1,#available_powerups do
     add_powerup(114+17*i, 115, available_powerups[i])
   end
-  --spawn_enemy_offscreen()
 
   gamerunning = true
   gameover = false
@@ -1214,13 +1197,9 @@ function _update()
   kill_sfx_this_frame = false
 
   update_tumbleweeds()
-
   update_mouse()
-
   cooldown_powerups()
-
   control_player()
-
   update_bullets()
 
   if(not isintro) update_enemies()
@@ -1257,8 +1236,6 @@ function _update()
       --move screen
       pxs = player.x - screenx
       pys = player.y - screeny
-      --screenx = min(max( screenx + max(pxs-128+screenborder,0) - max(screenborder-pxs,0) ,0), worldsizex-128)
-      --screeny = min(max( screeny + max(pys-128+screenborder,0) - max(screenborder-pys,0) ,0), worldsizey-128)
       screenx = screenx + max(pxs-128+screenborder,0) - max(screenborder-pxs,0)
       screeny = screeny + max(pys-128+screenborder,0) - max(screenborder-pys,0)
     end
@@ -1621,23 +1598,11 @@ function _draw()
   --print(wave_spawned .."/".. wave_enemiesthiswave,0,36,7)
   --print("time "..time, 0, 36, 7)
   --print("wave_timetilnextspawn "..wave_timetilnextspawn, 0, 64, 7)
-
-  -- waterx = player.x + (isweaponfacingleft and (-8) or 16)
-  -- watery = player.y + 8
-  -- circ(waterx-screenx, watery-screeny, 9, 5)
-  -- for f in all(flowers) do
-  --   circ(f.x-screenx, f.y-screeny, 3, 0)
-  -- end
 end
 
 -->8
 --
 -- EFFECTS
--- 0 = wavey
--- 1 = circles
--- 2 = wavey + flashing
--- 3 = circles + flashing
--- 4 and greater = not rainbowtext
 
 fierycolours = {5,8,9,14,15,9}
 
