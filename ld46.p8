@@ -4,6 +4,32 @@ __lua__
 -- bloom eternal
 -- slay slugs and keep your flowers alive
 
+function rspr(sx,sy,x,y,w, sa,ca)
+  --local ca,sa=cos(a),sin(a)
+  local srcx,srcy,addr,pixel_pair
+  local ddx0,ddy0=ca,sa
+  local mask=shl(0xfff8,(w-1))
+  w*=4
+  ca*=w-0.5
+  sa*=w-0.5
+  local dx0,dy0=sa-ca+w,-ca-sa+w
+  w=2*w-1
+  for ix=0,w do
+      srcx,srcy=dx0,dy0
+      for iy=0,w do
+          if band(bor(srcx,srcy),mask)==0 then
+              local c=sget(sx+srcx,sy+srcy)
+              if(c!=0)pset(x+ix,y+iy,c)
+          end
+          srcx-=ddy0
+          srcy+=ddx0
+      end
+      dx0+=ddx0
+      dy0+=ddy0
+  end
+end
+
+
 -- PICO-tween
 function outCubic(t, b, c, d)
   a = t / d - 1
@@ -442,8 +468,8 @@ available_powerups = {
       sprites = 4,
       sprite = 155,
       melee = true,
-      damage = 5,
-      range = 24,
+      damage = 100,
+      range = 16,
       lifetime = 240,
     }
   },
@@ -491,13 +517,12 @@ end
 
 function update_wateringcan()
   water = {
-    x = player.x + (isweaponfacingleft and (-8) or 16),
-    y = player.y + 8
+    x = player.x + (isweaponfacingleft and -4 or 12),
+    y = player.y + 4
   }
-  circ()
 
   for f in all(flowers) do
-    if distance(water, f) < 12 then
+    if distance(water, f) < 14 then
       watersuccess = true
       f.health = min(f.health + wateringcan_healperframe, f.maxhealth)
       score += wateringcan_healperframe * wateringcanscorescaler
@@ -892,10 +917,9 @@ function start_game(frommenu)
       end
     until i==3
 
-    music(8,300)
+    music(8,500)
     run_timer = false
   else
-    --sfx(6, -1)
     music(0)
     run_timer = true
   end
@@ -1414,19 +1438,32 @@ function draw_player()
   end
 
   --weapon
-  weaponsprite = (player.weapon.sprites == nil) and player.weapon.sprite or nil
-  if isintro or wateranimframes > 0 then
-    if wateranimframes > 5 and wateranimframes < 25 then
-      weaponsprite = 68
-    else weaponsprite = 67
-    end
-  end
+  if player.weapon.name =="the crucible" then
+    xx,yy = world_to_screen_coords(player.x, player.y)
+    dx = mousex - xx
+    dy = mousey - yy
+    mag = magnitude(dx,dy)
+    sa = dy/mag
+    ca = -dx/mag
 
-  if weaponsprite != nil then
-    draw_sprite(weaponsprite, player.x + (isweaponfacingleft and -8 or 8), player.y, not isweaponfacingleft)
+    for i=0,3 do
+      rspr(112-i*8,72, xx- (8*i-4)*ca-3+3*sa,yy+(8*i)*sa-4+3*ca, 2, sa,ca)
+    end
   else
-    for i=1,player.weapon.sprites do
-      draw_sprite(player.weapon.sprite + i - 1, player.x + 8*(i-player.weapon.sprites)*(isweaponfacingleft and 1 or -1), player.y, not isweaponfacingleft)
+    weaponsprite = (player.weapon.sprites == nil) and player.weapon.sprite or nil
+    if isintro or wateranimframes > 0 then
+      if wateranimframes > 5 and wateranimframes < 25 then
+        weaponsprite = 68
+      else weaponsprite = 67
+      end
+    end
+
+    if weaponsprite != nil then
+      draw_sprite(weaponsprite, player.x + (isweaponfacingleft and -8 or 8), player.y, not isweaponfacingleft)
+    else
+      for i=1,player.weapon.sprites do
+        draw_sprite(player.weapon.sprite + i - 1, player.x + 8*(i-player.weapon.sprites)*(isweaponfacingleft and 1 or -1), player.y, not isweaponfacingleft)
+      end
     end
   end
 
@@ -1588,9 +1625,7 @@ function _draw()
   --DEBUG
   print(flr(stat(1)*100) .. "% CPU",0,16,7)
   --print(stat(7).." fps", 0, 24, 7)
-  --print(wave_spawned .."/".. wave_enemiesthiswave,0,36,7)
-  --print("time "..time, 0, 36, 7)
-  --print("wave_timetilnextspawn "..wave_timetilnextspawn, 0, 64, 7)
+
 end
 
 -->8
@@ -1837,14 +1872,14 @@ cc7ccccc8898555844444444000000000000a000000a000000000000000000000000000000000000
 00000000000000000000000000000000f4f4f44ffff44ffffff444ff404040404440044004000400040400400009889999999888888888888885005000000000
 00000000000000000000000000000000f44444fffff4fffffff444ff404404444404400000440000404444000009890000000999999999999995000000000000
 00000000000000000000000000000000ff444ffffff4fffff44ff4ff400400000000040404440400040040000000990000000000900900900550000000000000
-0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee00000000
-0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee00000000
-0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee00000000
-0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee00000000
-0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee00000000
-0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee00000000
-0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee00000000
-0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee00000000
+00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 fffffffff00000000000005ffffffffffffffffffffffffffffffffffff50000000555fffff50ffffff55fff5fffffffffffffffffffffffffffffff00000000
 fffffffff50000000000005f55fffffffffff550fffffffffffffffffffff500005fffffffff5ffffff5ffffffffffffffffffffffffffffffff5fff00000000
 fffffffff5000000000000ff0055ffffffff50005fffffffffffffffffffff5005fffffffffffffffff5fffffffffffffffff0fffffffffff50f0f5f00000000
@@ -1987,8 +2022,8 @@ __music__
 02 0c150e55
 01 190d1541
 02 1a0e1541
-00 3f0f4141
-03 3f0f1041
+01 3f4f410f
+02 3f0f1041
 00 41414141
 00 41414141
 00 41414141
