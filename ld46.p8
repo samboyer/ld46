@@ -281,6 +281,7 @@ bulletlife = 40 -- life of bullet in frames
 worldsizex = 384 --size of arena in pixels
 worldsizey = 256
 killscorescaler = 0.2 --%age of enemy max health converted to points
+wateringcanscorescaler = 0.2 --%age of watering can healing converted to points
 powerup_chance = 0.3 --chance a killed enemy will drop a powerup
 screen_shake_decay = 1
 playerstartx = 188
@@ -464,6 +465,7 @@ function update_wateringcan()
     if (distance(water, f) < 12) then
       watersuccess = true
       f.health = min(f.health + wateringcan_healperframe, f.maxhealth)
+      score += wateringcan_healperframe * wateringcanscorescaler
     end
   end
 
@@ -808,10 +810,12 @@ function start_game(frommenu)
       end
     until i==3
 
-    music(8)
+    music(8,300)
+    run_timer = false
   else
     --sfx(6, -1)
     music(0)
+    run_timer = true
   end
 
   --TEMP
@@ -877,13 +881,15 @@ function add_bullet()
   if(player.weapon.particles) oneshot_splash(b, false)
 end
 
+kill_sfx_this_frame = false
+
 function hurt_enemy(e, damage)
   e.health -= damage
   if e.health <= 0 then
     if (rnd(1) < powerup_chance) add_random_powerup(e.x, e.y)
     del(enemies, e)
     kills += 1
-    sfx(8)
+    if(not kill_sfx_this_frame) then sfx(8) kill_sfx_this_frame = true end
     score += e.maxhealth * killscorescaler
     random_effect_text(kill_texts, 0.1)
   end
@@ -964,10 +970,34 @@ function update_health()
     end
   end
 
-  if isintro and weakest_flower==nil then --END INTRO
-    music(0) --TODO mute during cutscene
-    isintro = false
+  if isintro and not run_timer and weakest_flower==nil then --END INTRO
+    music(-1) --TODO mute during cutscene
+    --isintro = false
+    run_timer = true
+    wave_nextwavestarttime = time + 4.1
+    wave_originx, wave_originy = get_random_point_around(player.x, player.y, wave_originrubberband, 128) --enforce rubberbanding for first enemy
+    increment_wave()
+    wave_spawn_enemy()
+    oldscreenx = screenx
+    oldscreeny = screeny
+    enemyscreenx = enemies[1].x -64
+    enemyscreeny = enemies[1].y -64
   end
+end
+
+function increment_wave()
+  wave+=1
+  wave_enemiesthiswave = wave_enemycountbase + wave_enemycountdelta * wave
+  wave_spawned = 0
+  wave_spawnseparation = wave_spawnduration/wave_enemiesthiswave
+  wave_closenessthiswave = wave_enemycloseness + wave_enemyclosenessdelta * wave
+  wave_timetilnextspawn = wave_spawnseparation
+end
+
+function wave_spawn_enemy()
+  local x,y = get_random_point_around(wave_originx, wave_originy, wave_closenessthiswave)
+  add_enemy(x, y)
+  wave_spawned+=1
 end
 
 function update_wave()
@@ -976,11 +1006,6 @@ function update_wave()
       --start wave
       show_effect_text("wave "..(wave+1))
 
-      wave_enemiesthiswave = wave_enemycountbase + wave_enemycountdelta * wave
-      wave_spawned = 0
-      wave_spawnseparation = wave_spawnduration/wave_enemiesthiswave
-      wave_closenessthiswave = wave_enemycloseness + wave_enemyclosenessdelta * wave
-      wave_timetilnextspawn = wave_spawnseparation
       wave_nextwavestarttime = -1
       wave_originx, wave_originy = get_random_point_around(player.x, player.y, wave_originrubberband, 128)
     end
@@ -989,17 +1014,15 @@ function update_wave()
 
       wave_timetilnextspawn -= 0.0333333333
       if(wave_timetilnextspawn<=0) then
-        local x,y = get_random_point_around(wave_originx, wave_originy, wave_closenessthiswave)
-        add_enemy(x, y)
-        wave_spawned+=1
+        wave_spawn_enemy()
         wave_timetilnextspawn = wave_spawnseparation
       end
 
     else --cleanup time
-      if #enemies==0 then --all enemies cleared, begin downtime
+      if not isintro and #enemies==0 then --all enemies cleared, begin downtime
         --show_effect_text("start of downtime")
         wave_nextwavestarttime = time + wave_downtime
-        wave += 1 --do this here to say 'you survived'..waves
+        increment_wave()
       end
     end
 
@@ -1008,6 +1031,7 @@ end
 
 function _update()
   if (rnd(1) < 0.005) add_tumbleweed()
+  kill_sfx_this_frame = false
 
   update_tumbleweeds()
 
@@ -1019,7 +1043,7 @@ function _update()
 
   update_bullets()
 
-  update_enemies()
+  if(not isintro) update_enemies()
 
   isweaponfacingleft = mousex <= player.x - screenx
   isfacingdown = mousey >= player.y - screeny
@@ -1031,9 +1055,31 @@ function _update()
   end
 
   if gamerunning then
-    score += 0.2
-    if(not isintro) time += 0.03333333333333333333
+
+    if(run_timer) time += 0.03333333333333333333
+
     if(isintro and t==60) show_effect_text("water plants", true)
+
+    if run_timer and isintro then
+      if time < 1 then
+        screenx = outCubic(time, oldscreenx, enemyscreenx-oldscreenx, 1)
+        screeny = outCubic(time, oldscreeny, enemyscreeny-oldscreeny, 1)
+      elseif time>3 and time<4 then
+        screenx = outCubic(time-3, enemyscreenx, oldscreenx-enemyscreenx, 1)
+        screeny = outCubic(time-3, enemyscreeny, oldscreeny-enemyscreeny, 1)
+      elseif time>4 then
+        isintro = false
+        music(0)
+      end
+    else
+      --move screen
+      pxs = player.x - screenx
+      pys = player.y - screeny
+      screenx = min(max( screenx + max(pxs-128+screenborder,0) - max(screenborder-pxs,0) ,0), worldsizex-128)
+      screeny = min(max( screeny + max(pys-128+screenborder,0) - max(screenborder-pys,0) ,0), worldsizey-128)
+    end
+
+    if(not isintro) score += 0.2
 
     update_health()
     update_wave()
@@ -1052,11 +1098,6 @@ function _update()
       dstscreeny = weakest_flower.y - screeny-64
     end
 
-    --move screen
-    pxs = player.x - screenx
-    pys = player.y - screeny
-    screenx = min(max( screenx + max(pxs-128+screenborder,0) - max(screenborder-pxs,0) ,0), worldsizex-128)
-    screeny = min(max( screeny + max(pys-128+screenborder,0) - max(screenborder-pys,0) ,0), worldsizey-128)
   else
     if gameover then
       if t_die>50 then
@@ -1186,7 +1227,7 @@ function draw_player()
     player.sprite = (isfacingdown and 96 or 100) + max((t \ 4)%6-2,0)
   else
     player.sprite = (isfacingdown and 80 or 82) + (t \ 5)%2
-    if(t%5==0)sfx(17)
+    if(isintro and t%5==0)sfx(17)
   end
   draw_object(player, true)
 
@@ -1256,7 +1297,10 @@ function _draw()
     sy = screeny - screen_shake_y
     ox = sx%8
     oy =  sy%8
-    map((sx-ox)/8,(sy-oy)/8,-ox,-oy)
+    cx = min((worldsizex - screenx)\8,17)
+    cy = min((worldsizey - screeny)\8,17)
+
+    map((sx-ox)/8,(sy-oy)/8,-ox,-oy, cx, cy)
 
     --flowers
     for f in all(flowers) do
@@ -1305,8 +1349,6 @@ function _draw()
       if oldclick then ret = 17 else ret = 16 end
       spr(ret, mousex-3+ui_shake_x, mousey-3+ui_shake_y)
 
-      print("score: "..flr(score), 2+ui_shake_x,2+ui_shake_y, 7)
-
       -- powerup bar
       if #active_powerups > 0 then
         rect(20,110, 122,113, 7)
@@ -1336,6 +1378,7 @@ function _draw()
 
       end
     end
+    print("score: "..flr(score), 2+ui_shake_x,2+ui_shake_y, 7)
 
     --draw enemy indicators
     for e in all(enemies) do
@@ -1373,8 +1416,8 @@ function _draw()
 
   --DEBUG
   print(flr(stat(1)*100) .. "% CPU",0,16,7)
-  print(stat(7).." fps", 0, 24, 7)
-  print(wave_spawned .."/".. wave_enemiesthiswave,0,36,7)
+  --print(stat(7).." fps", 0, 24, 7)
+  --print(wave_spawned .."/".. wave_enemiesthiswave,0,36,7)
   --print("time "..time, 0, 36, 7)
   --print("wave_timetilnextspawn "..wave_timetilnextspawn, 0, 64, 7)
 
@@ -1400,6 +1443,7 @@ fierycolours = {5,8,9,14,15,9}
 flag_ripandtear = false
 
 function random_effect_text(list, chance)
+  if(isintro) return
 
   chance = chance or 0.3
   if not flag_ripandtear and rnd(1) < chance then
@@ -1413,7 +1457,7 @@ end
 
 function show_effect_text(text, override, playsfx)
   if (gameover) return
-  playsfx = playsfx or true
+  if(playsfx==nil) playsfx = true
   effect_text = text
   effect_text_time = 40
   effect_text_effect = flr(rnd(effect_count))
@@ -1428,7 +1472,7 @@ effect_count = 10
 function draw_effect_text()
   effect_text_time -= 1;
 
-  textx = (128 - effect_text_width * #effect_text)\2 + rnd(1)-.5
+  textx = (128 - effect_text_width * #effect_text)\2 + (rnd(1)<0.1 and rnd(1)-.5 or 0)
   texty = 40
 
   if effect_text_effect < 4 then
