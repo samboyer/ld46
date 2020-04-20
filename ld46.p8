@@ -1738,7 +1738,7 @@ generic_texts = {
   "owo what's this",
   "you are a saucy boy",
   "yeet",
-  "qpus aligned",
+  "qpuS aligned",
   "reticulating splines",
 }
 
