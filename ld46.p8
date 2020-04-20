@@ -16,21 +16,9 @@ function outCubic(t, b, c, d)
   return c * (a*a*a + 1) + b
 end
 
-function outQuart(t, b, c, d)
-  a = t / d - 1
-  return -c * (a*a*a*a - 1) + b
-end
-
-
 -- Particle System by fililou
 particles = {}
 emitters = {}
-
--- function _init()
---  -- Demo values
---  demo_i = 1
---  demo_l = {"wind", "sparks", "fireflies", "dome"}
--- end
 function update_particles() --used to be update60
  foreach(particles, update_particle)
  foreach(emitters, update_emitter)
@@ -39,9 +27,7 @@ function draw_particles() --used to be _draw
  foreach(particles, draw_particle)
  --print(#particles, 0, 92, 7)
 end
--- Axis are from 0 to 1
--- Axis(x, y, c, r) - axis variable
--- {,} - axis texture [1]: texture y position [2]: texture length
+
 function make_particle(_x, _y, _c, _r, _maxl)
  p = {
  x=_x,
@@ -106,21 +92,8 @@ function is_texture_axis(a)
  return a.n == nil
 end
 
--- Demo functions
--- function demo_emitter_wind()
---  make_particle(axis(0.5, 0.0076), axis(0.5), axis(0.46), {32, 32}, 50)
--- end
--- function demo_emitter_sparks()
---  local _r = rnd(0.25)-0.125
---  local _vx = 0.008 * sin(_r)
---  local _vy = cos(_r) * -0.008
---  make_particle(axis(0.5, _vx), axis(0.5, _vy, 0.0003), {33, 8}, axis(), 30+rnd(20))
--- end
-function demo_emitter_fireflies()
- make_particle(axis(0.4+rnd(0.2)), axis(0.4+rnd(0.2), rnd(0.001)+0.001), {35, 8}, {36+flr(rnd(3.99)), 16}, 600)
-end
--- function demo_emitter_dome()
---  make_particle(axis(0.5), axis(0.5, -0.008, 0.00026), {34, 8}, axis(rnd(0.5)-0.25), 60)
+-- function demo_emitter_fireflies()
+--  make_particle(axis(0.4+rnd(0.2)), axis(0.4+rnd(0.2), rnd(0.001)+0.001), {35, 8}, {36+flr(rnd(3.99)), 16}, 600)
 -- end
 
 function emitter_wateringcan()
@@ -213,14 +186,14 @@ end
 function get_dir8(dx,dy)
   local ratio = abs(dx)/abs(dy)
   if ratio>2 then --much more sideways
-    if dx>0 then return 0 else return 2 end
+    return dx>0 and 0 or 2
   elseif ratio<0.5 then --much more vertical
-    if dy>0 then return 3 else return 1 end
+    return dy>0 and 3 or 1
   else --diagonal
     if dx>0 then
-      if dy>0 then return 7 else return 4 end
+      return dy>0 and 7 or 4
     else
-      if dy>0 then return 6 else return 5 end
+      return dy>0 and 6 or 5
     end
   end
 end
@@ -231,15 +204,11 @@ end
 
 function print_outline(s, x,y, col, colout)
   colout = colout or 0
-  print(s,x-1,y-1,colout)
-  print(s,x-1,y,colout)
-  print(s,x-1,y+1,colout)
-  print(s,x,y-1,colout)
-  print(s,x,y+1,colout)
-  print(s,x+1,y-1,colout)
-  print(s,x+1,y,colout)
-  print(s,x+1,y+1,colout)
-
+  for i=x-1,x+1 do
+    for j=y-1,y+1 do
+      print(s,i,j,colout)
+    end
+  end
   print(s,x,y,col)
 end
 
@@ -255,7 +224,7 @@ function distance(o1, o2)
 end
 
 function check_collisions(x, y, dx, dy, in_x) -- assume width=height=8
-  if (in_x) then
+  if in_x then
     checkx = x + dx + ((dx > 0) and 8 or 0)
     tilex = checkx / 8
     return (checkx > worldsizex or checkx < 0 or fget(mget(tilex, y / 8), 0) or fget(mget(tilex, (y+7.9) / 8), 0))
@@ -530,7 +499,7 @@ function update_wateringcan()
   circ()
 
   for f in all(flowers) do
-    if (distance(water, f) < 12) then
+    if distance(water, f) < 12 then
       watersuccess = true
       f.health = min(f.health + wateringcan_healperframe, f.maxhealth)
       score += wateringcan_healperframe * wateringcanscorescaler
@@ -548,15 +517,15 @@ function apply_powerup(powerup)
   for k,v in pairs(powerup.contents) do
     contents[k] = v
   end
-  if (powerup.type == "weapon") then
+  if powerup.type == "weapon" then
     player.weapon = contents
     sfx(10)
-  elseif (powerup.type == "stat") then
+  elseif powerup.type == "stat" then
     sfx(18)
     player[contents.key] = contents.value
-  elseif (powerup.type == "instant") then
+  elseif powerup.type == "instant" then
     sfx(24)
-    if (powerup.effect == "water") then
+    if powerup.effect == "water" then
       for f in all(flowers) do
         f.health = min(f.health + 50, f.maxhealth)
       end
@@ -581,9 +550,9 @@ function cooldown_powerups()
       if (p.type == "weapon") weapon_cooled = true
     end
   end
-  if (done_powerup != nil) then
+  if done_powerup != nil then
     if (done_powerup.type == "weapon" or done_powerup.type == "instant") then
-    elseif (done_powerup.type == "stat") then
+    elseif done_powerup.type == "stat" then
       player[done_powerup.key] = player_original_stats[done_powerup.key]
     else
       show_effect_text"fix cooldown_powerups"
@@ -623,7 +592,7 @@ function control_player()
   end
   playerstill = x==0 and y==0
 
-  if (x == 0) then
+  if x == 0 then
     if abs(player.dx) < player.accel then
       player.dx = 0
     else
@@ -633,7 +602,7 @@ function control_player()
   else
     player.dx += x * player.accel
   end
-  if (y == 0) then
+  if y == 0 then
     if abs(player.dy) < player.accel then
       player.dy = 0
     else
@@ -645,7 +614,7 @@ function control_player()
   end
   -- clamp
   spd = sqrt(player.dx*player.dx + player.dy*player.dy) / player.maxspd
-  if (spd > 1) then
+  if spd > 1 then
     player.dx /= spd
     player.dy /= spd
   end
@@ -670,14 +639,14 @@ function control_player()
       collected_powerup = p
     end
   end
-  if (collected_powerup != nil) then
+  if collected_powerup != nil then
     apply_powerup(collected_powerup)
     del(powerups, collected_powerup)
   end
 
   --enemy collsisions (for knockback etc)
   for e in all(enemies) do
-    if (distance_basic(player, e) < 8) then
+    if distance_basic(player, e) < 8 then
       player.dx = (player.x - e.x)*2
       player.dy = (player.y - e.y)*2
     end
@@ -701,7 +670,7 @@ function control_player()
   if player.weapon.melee then
     screen_shake = max(screen_shake, 1)
     for e in all(enemies) do
-      if (distance_basic(player,e) < 14) then
+      if distance_basic(player,e) < 14 then
         hurt_enemy(e, player.weapon.damage)
         screen_shake = min(screen_shake+2, 20)
       end
@@ -773,7 +742,7 @@ function add_enemy(x, y)
     targetdist = 32767
     for f in all(flowers) do
       dist = distance_basic(e, f)
-      if (dist < targetdist) then
+      if dist < targetdist then
         target = f
         targetdist = dist
       end
@@ -794,7 +763,7 @@ function target_enemy(e)
     targetdist = 32767
     for f in all(flowers) do
       dist = distance_basic(e, f)
-      if (dist < targetdist) then
+      if dist < targetdist then
         target = f
         targetdist = dist
       end
@@ -960,7 +929,7 @@ function add_bullet()
   end
   flip_x = false
   flip_y = false
-  if (player.weapon.bullet_sprite == nil) then
+  if player.weapon.bullet_sprite == nil then
     sprite_base = player.default_weapon.bullet_sprite
     animated = player.default_weapon.bullet_animated
   else
@@ -1014,7 +983,7 @@ function hurt_enemy(e, damage)
     if (rnd(1) < powerup_chance) add_random_powerup(e.x, e.y)
     del(enemies, e)
     kills += 1
-    if(not kill_sfx_this_frame) then sfx(8) kill_sfx_this_frame = true end
+    if not kill_sfx_this_frame then sfx(8) kill_sfx_this_frame = true end
     oneshot_splash(e.x,e.y, {count=10,sprite=50,gravity=0.001,lifetime=10})
     score += e.maxhealth * killscorescaler
     random_effect_text(kill_texts, 0.1)
@@ -1023,7 +992,7 @@ end
 
 function do_splash_damage(b)
   for e in all(enemies) do
-    if (distance_basic(b,e) < b.splash_radius) then
+    if distance_basic(b,e) < b.splash_radius then
       hurt_enemy(e, b.damage)
     end
   end
@@ -1032,7 +1001,7 @@ end
 function update_bullets()
   deadbullet = nil
   for b in all(bullets) do
-    if (not b.dead) then
+    if not b.dead then
       b.x += b.dx
       b.y += b.dy
       b.life -= 1
@@ -1043,14 +1012,14 @@ function update_bullets()
         if(b.splash_radius>0) do_splash_damage(b)
       else
           if b.evil then
-            if (distance_basic(b,player) < 8) then
+            if distance_basic(b,player) < 8 then
               stunnedframes = gunnerstunduration
               b.dead = true
             end
           else
             hit_enemy = nil
             for e in all(enemies) do
-              if (distance_basic(b,e) < 8) then
+              if distance_basic(b,e) < 8 then
                 hit_enemy = e
               end
             end
@@ -1114,7 +1083,7 @@ function update_enemies()
   deadenemy = nil
   for e in all(enemies) do
     e.retarget -= 1
-    if (e.retarget == 0) then
+    if e.retarget == 0 then
       target_enemy(e)
       e.retarget = retarget_time
     end
@@ -1197,7 +1166,7 @@ function update_wave()
     if wave_spawned != wave_enemiesthiswave then --mid-spawn
 
       wave_timetilnextspawn -= 0.0333333333
-      if(wave_timetilnextspawn<=0) then
+      if wave_timetilnextspawn<=0 then
         wave_spawn_enemy()
         wave_timetilnextspawn = wave_spawnseparation
       end
@@ -1304,9 +1273,9 @@ function _update()
     end
   end
 
-  if (startcountdown != nil) then
+  if startcountdown != nil then
     startcountdown -= 1
-    if (startcountdown == 0) then
+    if startcountdown == 0 then
       startcountdown = nil
       startcountdown2 = 30
       --start_game(true)
@@ -1428,7 +1397,7 @@ function draw_player()
   end
 
   if isweaponfacingleft then --right hand
-    if (weaponsprite != nil) then
+    if weaponsprite != nil then
       draw_sprite(weaponsprite, player.x - 8, player.y)
     else
       for i=1,player.weapon.sprites do
@@ -1437,7 +1406,7 @@ function draw_player()
     end
     weapontipx = player.x - 5
   else
-    if (weaponsprite != nil) then
+    if weaponsprite != nil then
       draw_sprite(weaponsprite, player.x + 8, player.y, true) --left hand
     else
       for i=1,player.weapon.sprites do
@@ -1571,7 +1540,7 @@ function _draw()
 
     --draw enemy indicators
     for e in all(enemies) do
-      if (not e.dead) then
+      if not e.dead then
         ex = e.x - screenx - 64
         ey = e.y - screeny - 64
         if abs(ex)>64 or abs(ey)>64 then
@@ -1586,7 +1555,7 @@ function _draw()
 
     if gameover then
       t_die +=1
-      if(t_die<=50) then
+      if t_die<=50 then
         screenx = outCubic(t_die, oldscreenx, dstscreenx, 50)
         screeny = outCubic(t_die, oldscreeny, dstscreeny, 50)
         if(t_die==50) random_gameover_text()
@@ -1596,7 +1565,7 @@ function _draw()
       end
     end
 
-    if (startcountdown2 != nil) then
+    if startcountdown2 != nil then
       dither_rect(0,0,128,128,0,max(startcountdown2\2,1))
     end
   end
