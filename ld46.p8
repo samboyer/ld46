@@ -460,7 +460,7 @@ available_powerups={
       sprite=155,
       melee=true,
       damage=100,
-      range=24,
+      range=9,
       lifetime=240,
     }
   },
@@ -679,7 +679,17 @@ function control_player()
   --enemy collisions
   range=p_weapon.range or 8
   for e in all(enemies) do
-    if distance_basic(player, e)<range then
+    if p_weapon.name == "the crucible" then
+      xx,yy=world_to_screen(player.x-4, player.y-4)
+      dx=mousex-xx
+      dy=mousey-yy
+      mag=magnitude(dx,dy)
+      centre={
+        x=4+player.x+(14*dx/mag),
+        y=4+player.y+(14*dy/mag)
+      }
+    else centre=player end
+    if distance_basic(centre, e)<range then
       if melee then
         hurt_enemy(e, p_weapon.damage)
         if(p_weapon.name=="chainsaw") screen_shake=min(screen_shake+2, 20)
