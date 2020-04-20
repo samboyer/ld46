@@ -125,7 +125,6 @@ function oneshot_splash(x, y, p)
     make_particle(axis((x - screenx)/127, _vx), axis((y - screeny)/127, _vy, p.gravity), {(p.sprite%16)*8, (p.sprite\16)*8}, axis(), p.lifetime+rnd(3))
   end
  end
--- END PARTICLE SYSTEM
 
 --doomfire by fernandojsg (slightly altered)
 df_f={}df_p={0,1,1,4,8,9,10,7}df_w=64
@@ -153,7 +152,6 @@ function reset_doomfire()
   df_f={}
   for df_i=0,df_d do df_f[df_i]=df_i>df_d-df_w and 8 or 0 end
 end
---END DOOMFIRE
 
 --UTILITIES
 
@@ -462,7 +460,7 @@ available_powerups = {
       sprite = 155,
       melee = true,
       damage = 100,
-      range = 16,
+      range = 32,
       lifetime = 240,
     }
   },
@@ -661,14 +659,6 @@ function control_player()
     del(powerups, collected_powerup)
   end
 
-  --enemy collsisions (for knockback etc)
-  for e in all(enemies) do
-    if distance_basic(player, e) < 8 then
-      player.dx = (player.x - e.x)*2
-      player.dy = (player.y - e.y)*2
-    end
-  end
-
   -- current weapon
   p_weapon = nil
   for p in all(active_powerups) do
@@ -677,26 +667,27 @@ function control_player()
   p_weapon = p_weapon or player.default_weapon
 
   player.weapon_cooldown = max(player.weapon_cooldown - 1, 0)
-  local melee = p_weapon.melee
-  if (melee == nil) melee = false
+  local melee = p_weapon.melee or false
   if (not melee and stunnedframes==0 and not isintro and lmbdown and player.weapon_cooldown == 0 and can_t==0) then
     shoot_bullet()
     player.weapon_cooldown = p_weapon.cooldown
   end
 
-  if p_weapon.melee then
-    if (p_weapon.name == "chainsaw") screen_shake = max(screen_shake, 1)
-    for e in all(enemies) do
-      if distance_basic(player,e) < p_weapon.range then
+  if (p_weapon.name == "chainsaw") screen_shake = max(screen_shake, 1)
+
+  --enemy collisions
+  range = p_weapon.range or 8
+  for e in all(enemies) do
+    if distance_basic(player, e) < range then
+      if melee then
         hurt_enemy(e, p_weapon.damage)
         if (p_weapon.name == "chainsaw") screen_shake = min(screen_shake+2, 20)
+      else --knockback
+        player.dx = (player.x - e.x)*2
+        player.dy = (player.y - e.y)*2
       end
     end
   end
-
-  -- if (pl.t%4) == 0) then
-  --  sfx(1)
-  -- end
 end
 
 function update_mouse()
@@ -1067,6 +1058,13 @@ function update_bullets()
   if (deadbullet != nil) del(bullets, deadbullet)
 end
 
+function is_powerup_on(n)
+  for p in all(active_powerups) do
+    if (p.name == n) return true
+  end
+  return false
+end
+
 function add_enemy_bullet(e)
   local bx = e.x + (e.flip_x and -4 or 6)
   local by = e.y + 2
@@ -1380,14 +1378,8 @@ ghosts = {{maxval,maxval},{maxval,maxval},{maxval,maxval},{maxval,maxval}}
 
 function draw_player()
 
-  --ghosts (if speed boost active)
   oldpos = {player.x, player.y}
-  local show_ghosts = false
-  for p in all(active_powerups) do
-    if (p.name == "speed juice") show_ghosts = true
-  end
-
-  if show_ghosts then
+  if is_powerup_on"speed juice" then
     --draw ghosts
     for i=4,1,-1 do
       draw_sprite(84, ghosts[i][1], ghosts[i][2])
@@ -1402,9 +1394,7 @@ function draw_player()
   --bloomguy
   if gameover then --cry
     player.sprite = 97 + (t \ 10)%2
-    tx = player.x + (t%10==0 and 2 or 4)
-    ty = player.y+3
-    if (t%5==0) make_particle(axis((tx - screenx)/127), axis((ty - screeny)/127,0,0.001), {0,24}, axis(), 10+rnd(3))
+    if (t%5==0) make_particle(axis((player.x + (t%10==0 and 2 or 4) - screenx)/127), axis((player.y+3 - screeny)/127,0,0.001), {0,24}, axis(), 10+rnd(3))
 
   else
     if playerstill then
@@ -1509,18 +1499,9 @@ function _draw()
       end
     end
 
-    --powerups
-    for p in all(powerups) do
-      draw_object(p)
-    end
-
-    --tumbleweeds
-    for t in all(tumbleweeds) do
-      draw_object(t)
-    end
-
+    foreach(powerups, draw_object)
+    foreach(tumbleweeds, draw_object)
     draw_enemies()
-
     draw_player()
 
     --bullets
@@ -1542,6 +1523,14 @@ function _draw()
         rectfill(x0, y0, lerp(x0,x1, frac), y1, col)
       end
     end
+
+    if is_powerup_on"raincloud" then
+      for i=1,15 do
+        x,y=rnd(128),rnd(128)
+        line(x,y,x+1,y+3,12)
+      end
+    end
+
 
     --UI
     if gamerunning then
