@@ -956,8 +956,8 @@ function shoot_bullet()
       dot=dx*(player.dx/pmag)+dy*(player.dy/pmag)
       if(dx*player.dx<0) dot=0
       if(dy*player.dy<0) dot=0
-      dx += dx*dot
-      dy += dy*dot
+      dx += dx*0.5*dot
+      dy += dy*0.5*dot
     end
     flip_x=false
     flip_y=false
