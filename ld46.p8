@@ -950,17 +950,19 @@ function add_bullet()
   mag = magnitude(dx,dy) * bulletspeed
   dx /= mag
   dy /= mag
-  pmag = magnitude(player.dx, player.dy)
-  dot = dx*(player.dx/pmag) + dy*(player.dy/pmag)
-  if (dx*player.dx < 0) dot = 0
-  if (dy*player.dy < 0) dot = 0
-  dx += dx*dot
-  dy += dy*dot
+  if (player.dx > 0 or player.dy > 0) then
+    pmag = magnitude(player.dx, player.dy)
+    dot = dx*(player.dx/pmag) + dy*(player.dy/pmag)
+    if (dx*player.dx < 0) dot = 0
+    if (dy*player.dy < 0) dot = 0
+    dx += dx*dot
+    dy += dy*dot
+  end
   flip_x = false
   flip_y = false
   if (player.weapon.bullet_sprite == nil) then
     sprite_base = player.default_weapon.bullet_sprite
-    animated = true
+    animated = player.default_weapon.bullet_animated
   else
     sprite_base = player.weapon.bullet_sprite
     animated = player.weapon.bullet_animated or false
