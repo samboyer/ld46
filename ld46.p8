@@ -372,6 +372,7 @@ available_powerups = {
       sprite = 74,
       melee = true,
       damage = 5,
+      range = 14,
       lifetime = 240,
     }
   },
@@ -454,11 +455,12 @@ available_powerups = {
     sprite = 155,
     type = "weapon",
     contents = {
-      name = "crucible",
+      name = "crucible", --crucible
       sprites = 4,
       sprite = 155,
       melee = true,
       damage = 5,
+      range = 24,
       lifetime = 240,
     }
   },
@@ -681,11 +683,11 @@ function control_player()
   end
 
   if player.weapon.melee then
-    screen_shake = max(screen_shake, 1)
+    if (player.weapon.name == "chainsaw") screen_shake = max(screen_shake, 1)
     for e in all(enemies) do
-      if distance_basic(player,e) < 14 then
+      if distance_basic(player,e) < player.weapon.range then
         hurt_enemy(e, player.weapon.damage)
-        screen_shake = min(screen_shake+2, 20)
+        if (player.weapon.name == "chainsaw") screen_shake = min(screen_shake+2, 20)
       end
     end
   end
