@@ -66,8 +66,10 @@ function update_particle(p)
  -- Update all axis
  local _l = p.l / p.maxl
  _r = get_axis(p.r, _l)
- update_axis(p.x, cos(_r), -p.y.v * sin(_r))
- update_axis(p.y, cos(_r), p.x.v * sin(_r))
+ --update_axis(p.x, cos(_r), -p.y.v * sin(_r))
+ --update_axis(p.y, cos(_r), p.x.v * sin(_r))
+ update_axis(p.x)
+ update_axis(p.y)
  update_axis(p.c)
  update_axis(p.r)
  if(p.l >= p.maxl) del(particles, p)
@@ -129,13 +131,13 @@ function emitter_wateringcan()
   make_particle(axis((weapontipx - screenx)/127, _vx), axis((weapontipy - screeny)/127, _vy, 0.0003), {0, 24}, axis(), 10+rnd(5))
  end
 
-function oneshot_splash(b, extrafx)
-  sprite = b.particles.sprite
-  for i=0,b.particles.count do
+--p = {count,sprite,gravity,lifetime}
+function oneshot_splash(x, y, p, extrafx)
+  for i=0, p.count do
     local _r = rnd(1)-0.5
     local _vx = 0.008 * (sin(_r)+rnd(1)-0.5)
     local _vy = (cos(_r)+rnd(1)-0.5) * -0.008
-    make_particle(axis((b.x - screenx)/127, _vx), axis((b.y - screeny)/127, _vy, b.particles.gravity), {(sprite%16)*8, (sprite\16)*8,}, axis(), b.particles.lifetime+rnd(3))
+    make_particle(axis((x - screenx)/127, _vx), axis((y - screeny)/127, _vy, p.gravity), {(p.sprite%16)*8, (p.sprite\16)*8,}, axis(), p.lifetime+rnd(3))
   end
   if extrafx then
     sfx(6)
@@ -282,13 +284,15 @@ worldsizex = 384 --size of arena in pixels
 worldsizey = 256
 killscorescaler = 0.2 --%age of enemy max health converted to points
 wateringcanscorescaler = 0.2 --%age of watering can healing converted to points
-powerup_chance = 0.3 --chance a killed enemy will drop a powerup
+powerup_chance = 0.2 --chance a killed enemy will drop a powerup
 screen_shake_decay = 1
 playerstartx = 188
 playerstarty = 104
 screenstartx = 128
 screenstarty = 30
 wateringcan_healperframe = 2
+gunnerstunduration = 20  --num. frames for stun to occur
+gunershootspeed = 36
 
 wave_downtime = 6 --time between waves (secs)
 wave_spawnduration = 5 --time for enemies to spawn (secs)
@@ -345,6 +349,7 @@ isweaponfacingleft = false
 isfacingdown = true
 oldenemycount = -1
 isintro = true
+stunnedframes = 0
 
 bullets = {}
 --(x,y,dx,dy,sprite,life,dead)
@@ -366,7 +371,7 @@ available_powerups = {
       damage = 20,
       cooldown = 4,
       bullet_sprite = 36,
-      lifetime = 150,
+      lifetime = 240,
       shake = 3,
       splash_radius = 0,
     }
@@ -382,7 +387,7 @@ available_powerups = {
       damage = 200,
       cooldown = 40,
       bullet_sprite = 38,
-      lifetime = 150,
+      lifetime = 240,
       shake = 15,
       particles = {
         sprite = 49,
@@ -532,22 +537,26 @@ function control_player()
   x = 0
   y = 0
 
-  if gamerunning then
-    if btn(4) and wateranimframes == 0 then
-      start_wateringcan()
-    end
+  if stunnedframes == 0 then
+    if gamerunning and not(isintro and run_timer) then
+      if btn(4) and wateranimframes == 0 then
+        start_wateringcan()
+      end
 
-    inputx=0
-    inputy=0
-    if (btn(0,0) or btn(0,1)) inputx -= 1
-    if (btn(1,0) or btn(1,1)) inputx += 1
-    if (btn(2,0) or btn(2,1)) inputy -= 1
-    if (btn(3,0) or btn(3,1)) inputy += 1
+      inputx=0
+      inputy=0
+      if (btn(0,0) or btn(0,1)) inputx -= 1
+      if (btn(1,0) or btn(1,1)) inputx += 1
+      if (btn(2,0) or btn(2,1)) inputy -= 1
+      if (btn(3,0) or btn(3,1)) inputy += 1
 
-    if wateranimframes == 0 then
-      x=inputx
-      y=inputy
+      if wateranimframes == 0 then
+        x=inputx
+        y=inputy
+      end
     end
+  else
+    stunnedframes -=1
   end
   playerstill = x==0 and y==0
 
@@ -663,28 +672,38 @@ function add_flower_patch(x, y, num, radius, health)
 end
 
 function add_enemy(x, y)
+
+  --local class = (wave>=2 and rnd(1)<0.3) and "gun" or "eat" --from wave 3 onwards
+  local class = (rnd(1)<0.5) and "gun" or "eat" --from wave 3 onwards
+
   e = {
     x = x,
     y = y,
-    maxspd = 0.5,
-    attackdist = 5,
+    maxspd = (class=="gun" and 0.8 or 0.5),
+    attackdist = (class=="gun" and 32 or 8),
     damage = 0.3,
     sprite = 45,
     health = 100,
     dead = false,
     maxhealth = 100,
+    base_sprite = (class=="gun" and 88 or 104),
+    class = class,
+    phase = flr(rnd(30)),
   }
-
-  target = nil
-  targetdist = 10000
-  for f in all(flowers) do
-    dist = distance(e, f)
-    if (dist < targetdist) then
-      target = f
-      targetdist = dist
+  if class=="gun" then
+    e.target = player
+  else
+    target = nil
+    targetdist = 32767
+    for f in all(flowers) do
+      dist = distance_basic(e, f)
+      if (dist < targetdist) then
+        target = f
+        targetdist = dist
+      end
     end
+    e.target = target
   end
-  e.target = target
 
   add(enemies, e)
 end
@@ -869,16 +888,13 @@ function add_bullet()
     life = bulletlife,
     dead = false,
     particles = player.weapon.particles,
-    particle_sprite = player.weapon.particle_sprite,
-    particle_count = player.weapon.particle_count,
-    particle_gravity = player.weapon.particle_gravity,
-    splash_radius = player.weapon.splash_radius
+    splash_radius = player.weapon.splash_radius,
   }
   add(bullets, b)
 
   random_effect_text(shoot_texts, 0.05)
   screen_shake = player.weapon.shake
-  if(player.weapon.particles) oneshot_splash(b, false)
+  if(player.weapon.particles) oneshot_splash(b.x,b.y, b.particles, false)
 end
 
 kill_sfx_this_frame = false
@@ -890,6 +906,7 @@ function hurt_enemy(e, damage)
     del(enemies, e)
     kills += 1
     if(not kill_sfx_this_frame) then sfx(8) kill_sfx_this_frame = true end
+    oneshot_splash(e.x,e.y, {count=10,sprite=50,gravity=0.001,lifetime=10})
     score += e.maxhealth * killscorescaler
     random_effect_text(kill_texts, 0.1)
   end
@@ -913,20 +930,27 @@ function update_bullets()
       if (b.animated) b.sprite = b.sprite_base + (t%2) --32+(b.sprite-28) %8 --cycle sprite
       if b.life < 0 then
         b.dead = true
-        if(b.particles) oneshot_splash(b, false)
+        if(b.particles) oneshot_splash(b.x,b.y, b.particles, false)
         if(b.splash_radius>0) do_splash_damage(b)
       else
-          hit_enemy = nil
-          for e in all(enemies) do
-            if (distance_basic(b,e) < 8) then
-              hit_enemy = e
+          if b.evil then
+            if (distance_basic(b,player) < 8) then
+              stunnedframes = gunnerstunduration
+              b.dead = true
             end
-          end
-          if hit_enemy != nil then
-            b.dead = true
-            if(b.particles) oneshot_splash(b, true)
-            if b.splash_radius>0 then do_splash_damage(b)
-            else hurt_enemy(hit_enemy, b.damage) end
+          else
+            hit_enemy = nil
+            for e in all(enemies) do
+              if (distance_basic(b,e) < 8) then
+                hit_enemy = e
+              end
+            end
+            if hit_enemy != nil then
+              b.dead = true
+              if(b.particles) oneshot_splash(b.x,b.y, b.particles, true)
+              if b.splash_radius>0 then do_splash_damage(b)
+              else hurt_enemy(hit_enemy, b.damage) end
+            end
           end
       end
     else
@@ -934,6 +958,47 @@ function update_bullets()
     end
   end
   if (deadbullet != nil) del(bullets, deadbullet)
+end
+
+function add_enemy_bullet(e)
+  local bx = e.x + (e.flip_x and -4 or 6)
+  local by = e.y + 2
+  local dx = player.x - bx
+  local dy = player.y - by
+  mag = magnitude(dx,dy) * bulletspeed
+
+  flip_x = false
+  flip_y = false
+  sprite_base = 40
+  if abs(dx)>abs(dy) then
+    if dx<0 then
+      flip_x = true
+    end
+  else
+    sprite_base += 1
+    if dy>0 then
+      flip_y = true
+    end
+  end
+
+  local b = {
+    evil = true,
+    x = bx, --for sprite centering
+    y = by,
+    dx = dx/mag,
+    dy = dy/mag,
+    sprite_base = sprite_base,
+    sprite = sprite_base,
+    animated = false,
+    flip_x = flip_x,
+    flip_y = flip_y,
+    life = bulletlife,
+    dead = false,
+    splash_radius=0 --prevents crash
+  }
+  add(bullets, b)
+  sfx(0)
+  oneshot_splash(bx, by, {count=5,sprite=50,gravity=0.001,lifetime=6})
 end
 
 function update_enemies()
@@ -947,10 +1012,15 @@ function update_enemies()
         --show_effect_text(""..targetdist)
         e.x += (e.maxspd / targetdist) * (e.target.x - e.x)
         e.y += (e.maxspd / targetdist) * (e.target.y - e.y)
-      else
-        e.target.health = max(e.target.health - e.damage, 0)
+      else --doing action
+        if e.class=="eat" then
+          e.target.health = max(e.target.health - e.damage, 0)
+        else
+          if (e.phase + t)%gunershootspeed==0 then
+            add_enemy_bullet(e)
+          end
+        end
       end
-
       e.dead = false -- TODO BULLET CHECK? MAYBE PER BULLET
     else
       deadenemy = e
@@ -971,7 +1041,7 @@ function update_health()
   end
 
   if isintro and not run_timer and weakest_flower==nil then --END INTRO
-    music(-1) --TODO mute during cutscene
+    music(-1)
     --isintro = false
     run_timer = true
     wave_nextwavestarttime = time + 4.1
@@ -1065,6 +1135,8 @@ function _update()
         screenx = outCubic(time, oldscreenx, enemyscreenx-oldscreenx, 1)
         screeny = outCubic(time, oldscreeny, enemyscreeny-oldscreeny, 1)
       elseif time>3 and time<4 then
+        oldscreenx = player.x-64
+        oldscreeny = player.y-64
         screenx = outCubic(time-3, enemyscreenx, oldscreenx-enemyscreenx, 1)
         screeny = outCubic(time-3, enemyscreeny, oldscreeny-enemyscreeny, 1)
       elseif time>4 then
@@ -1171,9 +1243,9 @@ function draw_enemies()
   --(Bool and 96 or 100) + max((t \ 4)%6-2,0)
   for e in all(enemies) do
     if e.moving or gameover then
-      e.sprite = 104 + (t \ 8)%2
+      e.sprite = e.base_sprite + (t \ 8)%2
     else
-      e.sprite = 106+ (t \ 3)%5
+      e.sprite = e.base_sprite+2+ (t \ 3)%5
     end
     if(gameover) e.flip_x = (t%26)>=13
     if (not e.dead) draw_object(e, true)
@@ -1260,6 +1332,8 @@ function draw_player()
     weapontipx = player.x + 13
   end
   weapontipy = player.y + 4
+
+  if(stunnedframes>0) draw_sprite(52+(t\2)%2,player.x,player.y-2)
 end
 
 function _draw()
@@ -1450,7 +1524,7 @@ function random_effect_text(list, chance)
     flag_ripandtear = true
     show_effect_text"rip and tear"
   else
-    if (rnd(1) < 0.5) list = generic_texts
+    if (rnd(1) < 0.3) list = generic_texts
     if (rnd(1) < chance) show_effect_text(list[flr(rnd(#list))+1])
   end
 end
@@ -1586,21 +1660,21 @@ __gfx__
 00000000000000000000000000000000000000000000000000004300000000003dd3dd3dfdd3d3d3d3dddd3fdfffffffffffffd33dd3dd3d0000000000000000
 00000000000000000000000000000000000000000000000000000b00000000003ddddd3dfdd3ddd3d3dddd3ffffffffffffffffd3ddddd3d0000000000000000
 0000000000000000000c7000000c700000000000000000005555500000055000000000000000000000000000000000000000000070000007000000eeee000000
-000000000000000000cc700000cc70000000000000000000555555000055550000000000000000000000000000000000000000000777777000000eeeeee00000
-c00cc7700c0c777000ccc00000ccc0000000000000000000556555500555555000000000000000000000000000000000000000000766766000000eeeeee00000
-00ccccc70cccccc700ccc00000ccc0000000000000050000565655555555555500000000000000000000000000000000000000000766766000000eeeeee0eee0
-c700ccc0c0c0ccc000cc000000c07000000550000005000055655555555656550000000000000000000000000000000000000000077777700eee0eeeeeeeeeee
-0000000000000000000c0000000cc00000000000000000005656555055656555000000000000000000000000000000000000000000767600eeeeee9aaaeeeeee
-000000000000000000007000000c000000000000000000005555550055565655000000000000000000000000000000000000000000767600eeeee9aa9aaeeeee
+000000000000000000cc700000cc70000000000000000000555555000055550000000000005050000000000000000000000000000777777000000eeeeee00000
+c00cc7700c0c777000ccc00000ccc0000000000000000000556555500555555000005050000540000000000000000000000000000766766000000eeeeee00000
+00ccccc70cccccc700ccc00000ccc0000000000000050000565655555555555500444500000440000000000000000000000000000766766000000eeeeee0eee0
+c700ccc0c0c0ccc000cc000000c07000000550000005000055655555555656550444440000044000000000000000000000000000077777700eee0eeeeeeeeeee
+0000000000000000000c0000000cc00000000000000000005656555055656555000000000004400000000000000000000000000000767600eeeeee9aaaeeeeee
+000000000000000000007000000c000000000000000000005555550055565655000000000000400000000000000000000000000000767600eeeee9aa9aaeeeee
 000000000000000000c0c0000000c00000000000000000005555500055555555000000000000000000000000000000000000000077777700eeeee9a9a9aeeeee
-cc7ccc7caaaa9999000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000eeeee9aa9aaeeee0
-c7cc7cc7999998890000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000eeee99aaa9eee00
-cc7cc7cc89895595000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000eee9999eee000
-cc7ccccc88985558000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000eeeeeeeeeee00
-111c11c15858558500000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000eeeeeeeeeeeee0
-1c1111c15855588500000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000eeeeee0eeeeee0
-111c1c115558585500000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000eeeeee00eeeee0
-11c111c155855585000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000eee0000eeee00
+cc7ccc7caaaa9999444555440000000000a0000000000a000000000000000000000000000000000000000000000000000000000000000000eeeee9aa9aaeeee0
+c7cc7cc7999998894444444500000000000000a00a00000000000000000000000000000000000000000000000000000000000000000000000eeee99aaa9eee00
+cc7cc7cc8989559545544554000000000a000000000000a00000000000000000000000000000000000000000000000000000000000000000000eee9999eee000
+cc7ccccc8898555844444444000000000000a000000a00000000000000000000000000000000000000000000000000000000000000000000000eeeeeeeeeee00
+111c11c15858558555544445000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000eeeeeeeeeeeee0
+1c1111c15855588555555555000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000eeeeee0eeeeee0
+111c1c115558585555555555000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000eeeeee00eeeee0
+11c111c155855585555555550000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000eee0000eeee00
 0000000000000000eeeeeeee00000000000000000000000000000000000055000066660000666600000000000000000000000000000000000000000000000000
 000000000000bbb0eeeeeeee000000000000000000000000000000000000555003bb8bb006666666000000000000000000000000000000000000000000000000
 000000000000bbb0eeeeeeee0000600000000000000000000000666660000555023888b066666666000000000000000000000000000000000000000000000000
@@ -1609,14 +1683,14 @@ cc7ccccc889855580000000000000000000000000000000000000000000000000000000000000000
 000000000000000cee5555ee0006666006666606000005050567666655555555023888b00c000c0c000000000000000000000000000000000000000000000000
 0000000000000000e555555e0000000000066660000000050067666660000000023bbbb00c00000c000000000000000000000000000000000000000000000000
 0000000000000000ee5555ee00000000000000000000000000000000000000000066660000000000000000000000000000000000000000000000000000000000
-00333d0000333d0000333d0000333d0000cccc00ee0000ee00000000000000000000000000000000000000000000000000000000000000000000000000000000
-031112d0031112d0033333d0033333d00cccccc0e000000e00000000000000000000000000000000000000000000000000000000000000000000000000000000
-0031130000311300003333000033330000cccc00ee0000ee00000000000000000000000000000000000000000000000000000000000000000000000000000000
-035595300355953003555530035555300cccccc0e000000e00000000000000000000000000000000000000000000000000000000000000000000000000000000
-30333303303333033033330330333303c0cccc0c0e0000e000000000000000000000000000000000000000000000000000000000000000000000000000000000
-0053350000533500005335000053350000cccc00ee0000ee00000000000000000000000000000000000000000000000000000000000000000000000000000000
-0030050000500300003005000050030000c00c00ee0ee0ee00000000000000000000000000000000000000000000000000000000000000000000000000000000
-0000030000300000000003000000000000c00c00ee0ee0ee00000000000000000000000000000000000000000000000000000000000000000000000000000000
+00333d0000333d0000333d0000333d0000cccc00ee0000ee00000000000000005000000550000005500000055000000559444955500000055000000500000000
+031112d0031112d0033333d0033333d00cccccc0e000000e0000000000000000059444900594449005944490594449504a949a00059444900594449000000000
+0031130000311300003333000033330000cccc00ee0000ee000000000000000004a949a004a949a004a949a04a949a004ab4ab0004a949a004a949a000000000
+035595300355953003555530035555300cccccc0e000000e000000000000000004ab4ab004ab4ab004ab4ab04ab4ab004444440004ab4ab004ab4ab000000000
+30333303303333033033330330333303c0cccc0c0e0000e000000000000000000444444004444440044444404444440003444400044444400444444000000000
+0053350000533500005335000053350000cccc00ee0000ee00000000000000000034555500344400003555500345555003455550034455550034555500000000
+0030050000500300003005000050030000c00c00ee0ee0ee00000000000000000034540000035555003544000345400003454000034450000034540000000000
+0000030000300000000003000000000000c00c00ee0ee0ee00000000000000003344440003345440334444003344400033444000334440003344440000000000
 00333d0000333d00000000000000000000333d0000333d0000000000000000005000000550000005559444955594449550000005500000055000000500000000
 031112d0031112d000333d0000333d00033333d0033333d000333d0000333d00059444900594449004a949a004a949a005500005050000500594449000000000
 0031130000311300031112d0031112d00033330000333300033333d0033333d004a949a004a949a004a84a8004a84a80044944490494449004a949a000000000
