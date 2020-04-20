@@ -1249,6 +1249,7 @@ function _update()
     if(isintro and t==60) show_effect_text("water plants", true)
 
     if run_timer and isintro then
+      if (time > 1 and time < 1.5) show_effect_text("protect the garden", true)
       if time < 1 then
         screenx = outCubic(time, oldscreenx, enemyscreenx-oldscreenx, 1)
         screeny = outCubic(time, oldscreeny, enemyscreeny-oldscreeny, 1)
@@ -1304,7 +1305,6 @@ function _update()
           music(-1)
           sfx(22)
           sfx(23)
-          poke(0x5F2D, 1) --enable mouse
           kill_doomfire()
         else controlsshowing = true end
       end
@@ -1316,6 +1316,7 @@ function _update()
     if startcountdown == 0 then
       startcountdown = nil
       startcountdown2 = 30
+      poke(0x5F2D, 1) --enable mouse
       start_game(true)
     end
   end
@@ -1779,7 +1780,7 @@ gameover_texts = {
   {"omae wa moushindeiru",11},
   {"you are nota saucy boy",11},
   {"\"everything not savedwill be lost\"",21},
-  "you lose (the flowers)",
+  {"you lose(the flowers)",8},
   "f"
 }
 
