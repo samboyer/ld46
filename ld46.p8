@@ -2,6 +2,7 @@ pico-8 cartridge // http://www.pico-8.com
 version 21
 __lua__
 -- bloom eternal
+-- by sam b, josh s
 -- slay slugs and keep your flowers alive
 
 --sprite rotation by jihem
