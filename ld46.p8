@@ -461,7 +461,7 @@ available_powerups={
       sprite=155,
       melee=true,
       damage=100,
-      range=24,
+      range=9,
       lifetime=240,
     }
   },
@@ -680,7 +680,17 @@ function control_player()
   --enemy collisions
   range=p_weapon.range or 8
   for e in all(enemies) do
-    if distance_basic(player, e)<range then
+    if p_weapon.name == "the crucible" then
+      xx,yy=world_to_screen(player.x-4, player.y-4)
+      dx=mousex-xx
+      dy=mousey-yy
+      mag=magnitude(dx,dy)
+      centre={
+        x=4+player.x+(14*dx/mag),
+        y=4+player.y+(14*dy/mag)
+      }
+    else centre=player end
+    if distance_basic(centre, e)<range then
       if melee then
         hurt_enemy(e, p_weapon.damage)
         if(p_weapon.name=="chainsaw") screen_shake=min(screen_shake+2, 20)
@@ -940,7 +950,7 @@ function shoot_bullet()
     dx /= mag * bulletspeed
     dy /= mag * bulletspeed
     local n=p_weapon.bulletspershot or 1
-    if(player.dx>0 or player.dy>0) then
+    if(abs(player.dx)>0 or abs(player.dy)>0) then
       pmag=magnitude(player.dx, player.dy)
       dot=dx*(player.dx/pmag)+dy*(player.dy/pmag)
       if(dx*player.dx<0) dot=0
@@ -1759,6 +1769,15 @@ generic_texts={
   "phenomenal",
   "tubular",
   "stonks",
+  "far out",
+  "wicked",
+  "radical",
+  "awesome",
+  "groovy",
+  "glorious",
+  "sensational",
+  "divine",
+  "neato",
   "you did the thing",
   "sample text",
   "hey! listen!",
@@ -1771,6 +1790,7 @@ generic_texts={
 gameover_texts={
   {"change da worldmy final messagegoodb ye", 15, 31},
   "ded",
+  "rip",
   "*pacman death sound*",
   "you died",
   "game over",
