@@ -938,7 +938,7 @@ function shoot_bullet()
     dx /= mag * bulletspeed
     dy /= mag * bulletspeed
     local n=p_weapon.bulletspershot or 1
-    if(player.dx>0 or player.dy>0) then
+    if(abs(player.dx)>0 or abs(player.dy)>0) then
       pmag=magnitude(player.dx, player.dy)
       dot=dx*(player.dx/pmag)+dy*(player.dy/pmag)
       if(dx*player.dx<0) dot=0
