@@ -319,12 +319,6 @@ player = {
     bullet_sprite = 36,
     bullet_animated = false,
     lifetime = nil,
-    particles = {
-      sprite = 48,
-      count = 10,
-      gravity = 0.001,
-      lifetime = 5,
-    },
     splash_radius = 0,
   },
   weapon = nil,
@@ -478,6 +472,12 @@ available_powerups = {
       splash_radius = 0,
       bullet_sprite = 32,
       bullet_animated = true,
+      particles = {
+        sprite = 48,
+        count = 10,
+        gravity = 0.001,
+        lifetime = 5,
+      },
     }
   },
 }
