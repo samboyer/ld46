@@ -402,12 +402,13 @@ available_powerups = {
       name = "elite x", --sniper
       sprites = 2,
       sprite = 77,
-      damage = 5,
+      damage = 200,
       lifetime = 240,
-      shake = 200,
+      shake = 2,
       cooldown = 20,
       splash_radius = 0,
-      sniper=true
+      sniper=true,
+      tipx = -7
     }
   },
   {
@@ -913,15 +914,23 @@ function start_game(frommenu)
 end
 
 function shoot_bullet()
+  dx = mousex + screenx - weapontipx
+  dy = mousey + screeny - weapontipy
+  mag = magnitude(dx,dy)
+
   if player.weapon.sniper then
-    --TODO LINE TEST
+    for e in all(enemies) do
+      --|(e-tip) X dir|/|dir|, cross cancels to a1b2-a2b1
+      vx = e.x-weapontipx
+      vy = e.y-weapontipy
+      dist = (vx*dy - vy*dx)/mag
+      dot = vx*dx + vy*dy
+      if(dist<3 and dot>0) hurt_enemy(e, player.weapon.damage)
+    end
   else
+    dx /= mag * bulletspeed
+    dy /= mag * bulletspeed
     local n = player.weapon.bulletspershot or 1
-    dx = mousex + screenx - weapontipx
-    dy = mousey + screeny - weapontipy
-    mag = magnitude(dx,dy) * bulletspeed
-    dx /= mag
-    dy /= mag
     if (player.dx > 0 or player.dy > 0) then
       pmag = magnitude(player.dx, player.dy)
       dot = dx*(player.dx/pmag) + dy*(player.dy/pmag)
@@ -1177,8 +1186,8 @@ function update_wave()
     else --cleanup time
       if not isintro and #enemies==0 then --all enemies cleared, begin downtime
         --show_effect_text("start of downtime")
-        wave_nextwavestarttime = time + wave_downtime
         increment_wave()
+        wave_nextwavestarttime = time + wave_downtime - (wave==0 and 3 or 0)
       end
     end
 
@@ -1233,8 +1242,10 @@ function _update()
       --move screen
       pxs = player.x - screenx
       pys = player.y - screeny
-      screenx = min(max( screenx + max(pxs-128+screenborder,0) - max(screenborder-pxs,0) ,0), worldsizex-128)
-      screeny = min(max( screeny + max(pys-128+screenborder,0) - max(screenborder-pys,0) ,0), worldsizey-128)
+      --screenx = min(max( screenx + max(pxs-128+screenborder,0) - max(screenborder-pxs,0) ,0), worldsizex-128)
+      --screeny = min(max( screeny + max(pys-128+screenborder,0) - max(screenborder-pys,0) ,0), worldsizey-128)
+      screenx = screenx + max(pxs-128+screenborder,0) - max(screenborder-pxs,0)
+      screeny = screeny + max(pys-128+screenborder,0) - max(screenborder-pys,0)
     end
 
     if(not isintro) score += 0.2
@@ -1281,8 +1292,7 @@ function _update()
     if startcountdown == 0 then
       startcountdown = nil
       startcountdown2 = 30
-      --start_game(true)
-      start_game(false)
+      start_game(true)
     end
   end
   if (startcountdown2 != nil) startcountdown2 -= 1
@@ -1377,9 +1387,12 @@ function draw_player()
   end
 
   --bloomguy
-  if gameover then
-    player.sprite = 97 + (t \ 5)%2
-    if (t%5==0) make_particle(axis(player.x + (t%10==0 and 4 or 6),0), axis(player.y+3,0,0.001), {0,24}, axis(), 10+rnd(3))
+  if gameover then --cry
+    player.sprite = 97 + (t \ 10)%2
+
+    tx = player.x + (t%10==0 and 2 or 4)
+    ty = player.y+3
+    if (t%5==0) make_particle(axis((tx - screenx)/127), axis((ty - screeny)/127,0,0.001), {0,24}, axis(), 10+rnd(3))
   else
     if playerstill then
       player.sprite = (isfacingdown and 96 or 100) + max((t \ 4)%6-2,0)
@@ -1390,11 +1403,16 @@ function draw_player()
   end
   draw_object(player, true)
 
+  local tipoffx = player.weapon.tipx or -5
+  local tipoffy = player.weapon.tipy or 3
+  weapontipx = player.x + (isweaponfacingleft and tipoffx or 8-tipoffx)
+  weapontipy = player.y + tipoffy
+
   if player.weapon.sniper then
-    dx = mousex - weapontipx + screenx
-    dy = mousey - weapontipy + screeny
     x0, y0 = world_to_screen_coords(weapontipx, weapontipy)
-    line(x0, y0,  8)
+    dx = mousex - x0
+    dy = mousey - y0
+    line(x0, y0,x0+dx*128, y0+dy*128, 8)
   end
 
   --weapon
@@ -1414,7 +1432,6 @@ function draw_player()
         draw_sprite(player.weapon.sprite + i - 1, player.x + 8*(i-2), player.y)
       end
     end
-    weapontipx = player.x - 5
   else
     if weaponsprite != nil then
       draw_sprite(weaponsprite, player.x + 8, player.y, true) --left hand
@@ -1423,9 +1440,7 @@ function draw_player()
         draw_sprite(player.weapon.sprite + i - 1, player.x - 8*(i-2), player.y, true)
       end
     end
-    weapontipx = player.x + 13
   end
-  weapontipy = player.y + 4
 
   if(stunnedframes>0) draw_sprite(52+(t\2)%2,player.x,player.y-2)
 end
@@ -1874,7 +1889,7 @@ __gff__
 0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001010101000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 __map__
 1717171717171717171717171717171717171717171717171717171717171717171717171717171717171717171717171717171717171717171717000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-17b8b9bab0b0bab0b0b0b0b0b0b0b0b0b0b7b8b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b7171717171717171717171717000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000020300000004004f05060000000500
+17b8b9bab0b0bab0b0b0b0b0b0b0b0b0b0b7b8b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b7171717171717171717171717000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000020300000004000005060000000500
 17bbb0b0b0b0b0b0b0b0b0b095b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b095b0b0b0b0b0b0b0b0b0b0b0b095b0b01717171717171717171717170000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000d1d0c3dac2c1c3c2c1c3c2c1d3ccd0d2
 17b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0beb0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0171717171717171717171717000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000c000c0c0c000c0c000c0c0c0c0c000
 17b0b0b095b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b094b0b0b0b0b0beb0b0b0b0b0b0171717171717171717171717000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000cac3c9c0c000c0c000c0c0c0c0c000
