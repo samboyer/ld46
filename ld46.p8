@@ -465,9 +465,9 @@ available_powerups = {
       name = "satanic soaker", --water gun
       sprites = 1,
       sprite = 65,
-      damage = 5,
+      damage = 0,
       lifetime = 240,
-      shake = 5,
+      shake = 2,
       cooldown = 10,
       splash_radius = 0,
       bullet_sprite = 32,
@@ -944,7 +944,7 @@ function start_game(frommenu)
 end
 
 function add_bullet()
-  sfx(0, -1)
+  local n = player.weapon.bulletspershot or 1
   dx = mousex + screenx - weapontipx
   dy = mousey + screeny - weapontipy
   mag = magnitude(dx,dy) * bulletspeed
@@ -979,24 +979,28 @@ function add_bullet()
       --sprite_base += 2--(animated and 2 or 1)
     end
   end
-  local b = {
-    x = weapontipx-4, --for sprite centering
-    y = weapontipy-4,
-    dx = dx,
-    dy = dy,
-    sprite_base = sprite_base,
-    sprite = sprite_base,
-    animated = animated,
-    flip_x = flip_x,
-    flip_y = flip_y,
-    damage = player.weapon.damage,
-    life = bulletlife,
-    dead = false,
-    particles = player.weapon.particles,
-    splash_radius = player.weapon.splash_radius,
-  }
-  add(bullets, b)
+  local b
+  for i=1,n do
+    b = {
+      x = weapontipx-4, --for sprite centering
+      y = weapontipy-4,
+      dx = dx * (n>1 and 1+rnd(1)/4 or 1),--for scattering
+      dy = dy * (n>1 and 1+rnd(1)/4 or 1),
+      sprite_base = sprite_base,
+      sprite = sprite_base,
+      animated = animated,
+      flip_x = flip_x,
+      flip_y = flip_y,
+      damage = player.weapon.damage,
+      life = bulletlife,
+      dead = false,
+      particles = player.weapon.particles,
+      splash_radius = player.weapon.splash_radius,
+    }
+    add(bullets, b)
+  end
 
+  sfx(0, -1)
   random_effect_text(shoot_texts, 0.05)
   screen_shake = player.weapon.shake
   if(player.weapon.particles) oneshot_splash(b.x,b.y, b.particles, false)
@@ -1305,7 +1309,8 @@ function _update()
     if (startcountdown == 0) then
       startcountdown = nil
       startcountdown2 = 30
-      start_game(true)
+      --start_game(true)
+      start_game(false)
     end
   end
   if (startcountdown2 != nil) startcountdown2 -= 1
