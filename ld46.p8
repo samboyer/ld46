@@ -539,6 +539,7 @@ function apply_powerup(powerup)
 end
 
 function cooldown_powerups()
+  if (gameover) return
   done_powerup = nil
   weapon_cooled = false
   for p in all(active_powerups) do
@@ -861,6 +862,9 @@ function start_game(frommenu)
   enemies = {}
   powerups = {}
   active_powerups = {}
+  for k,v in pairs(player_original_stats) do
+    player[k] = v
+  end
   t=0
   time=0
   score=0
