@@ -641,7 +641,7 @@ function control_player()
   player.weapon = player.weapon or player.default_weapon
 
   player.weapon_cooldown = max(player.weapon_cooldown - 1, 0)
-  if (not player.weapon.melee and not isintro and lmbdown and player.weapon_cooldown == 0 and wateranimframes==0) then
+  if (not player.weapon.melee and stunframes==0 and not isintro and lmbdown and player.weapon_cooldown == 0 and wateranimframes==0) then
     add_bullet()
     player.weapon_cooldown = player.weapon.cooldown
   end
