@@ -1109,10 +1109,12 @@ end
 function update_enemies()
   deadenemy = nil
   for e in all(enemies) do
-    e.retarget -= 1
-    if (e.retarget == 0) then
-      target_enemy(e)
-      e.retarget = retarget_time
+    if (not gameover) then
+      e.retarget -= 1
+      if (e.retarget == 0) then
+        target_enemy(e)
+        e.retarget = retarget_time
+      end
     end
     if (not e.dead and e.target != nil) then
       targetdist = distance(e, e.target)
