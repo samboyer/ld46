@@ -1145,7 +1145,7 @@ function update_enemies()
         if e.class=="eat" then
           if(e.target.health != nil) e.target.health=max(e.target.health-e.damage, 0)
 
-          if(not gameover and t%15==9) oneshot_splash(e.x, e.y, {count=4,sprite=52+e.target.maincolor,gravity=0.001,lifetime=10})
+          if(not gameover and e.target.health != nil and t%15==9) oneshot_splash(e.x, e.y, {count=4,sprite=52+e.target.maincolor,gravity=0.001,lifetime=10})
         else
           if(e.phase+t)%gunershootspeed==0 then
             add_enemy_bullet(e)
