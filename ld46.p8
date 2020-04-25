@@ -187,11 +187,11 @@ end
 
 function get_dir8(dx,dy)
   local ratio=abs(dx)/abs(dy)
-  if ratio>2 then --much more sideways
+  if ratio>2 then
     return dx>0 and 0 or 2
-  elseif ratio<0.5 then --much more vertical
+  elseif ratio<0.5 then
     return dy>0 and 3 or 1
-  else --diagonal
+  else
     if dx>0 then
       return dy>0 and 7 or 4
     else
@@ -249,31 +249,31 @@ cls() -- clear screen
 
 --CONSTANTS/CONFIG
 maxval=32767
-screenborder=40 -- how close guy can get before moving screen
+screenborder=40 --pan threshold (px)
 bulletspeed=0.5
-bulletlife=40 -- life of bullet in frames
-worldsizex=384 --size of arena in pixels
+bulletlife=40 --life of bullet (frames)
+worldsizex=384 --size of arena (px)
 worldsizey=256
-killscorescaler=0.2 --%age of enemy max health converted to points
-canscorescaler=0.2 --%age of watering can healing converted to points
-powerup_chance=0.2 --chance a killed enemy will drop a powerup
+killscorescaler=0.2 --enemy max health > points (%)
+canscorescaler=0.2 --can healing > points (%)
+powerup_chance=0.2 --enemy death powerup drop (%)
 screen_shake_decay=1
 playerstartx=188
 playerstarty=104
 screenstartx=128
 screenstarty=30
 can_healperframe=2
-retarget_time=150 -- number of frames after which enemy switches targets
-gunnerstunduration=20  --num. frames for stun to occur
+retarget_time=150 --frames before enemy switches targets
+gunnerstunduration=20  --stun duration (frames)
 gunershootspeed=36
 
 wave_downtime=6 --time between waves (s)
-wave_spawnduration=5 --time for enemies to spawn (s)
+wave_spawnduration=5 --time in which enemies spawn (s)
 wave_enemycountbase=3 --base #enemies per wave
 wave_enemycountdelta=1
 wave_originsizebase=48 --dist from 'wave origin' (px)
 wave_originsizedelta=8
-wave_originrubberband=256 --max distance of enemy origin from camera
+wave_originrubberband=256 --max distance of enemy origin from camera (px)
 
 player={
   dx=0,
@@ -283,16 +283,6 @@ player={
   accel=0.6,
   maxspd=2.4,
   sprite=64,
-  default_weapon={
-    sprite=64,
-    damage=50,
-    cooldown=15,
-    shake=3,
-    bullet_sprite=42,
-    bullet_animated=false,
-    lifetime=nil,
-    splash_radius=0,
-  },
   weapon=nil,
   weapon_cooldown=0
 }
@@ -301,7 +291,17 @@ for k,v in pairs(player) do
   player_original_stats[k]=v
 end
 
-p_weapon=player.default_weapon
+default_weapon={
+  sprite=64,
+  damage=50,
+  cooldown=15,
+  shake=3,
+  bullet_sprite=42,
+  bullet_animated=false,
+  lifetime=nil,
+  splash_radius=0,
+}
+p_weapon=default_weapon
 
 --VARIABLES
 lmbdown=false
@@ -480,18 +480,18 @@ wave=0 --#waves survived (lags behind)
 
 playerstill=true --for idle animation
 can_t=0 --frames remaining of watering can anim
-watersuccess=false --did the watering get a flower
+watersuccess=false --did watering can hit flower?
 weakest_flower=nil --ref to weakest flower obj
-t=0 --frame count, for anims (not to be trusted!)
-time=0 --game timer in s
+t=0 --frame count, for anims only!
+time=0 --game timer (s)
 gamerunning=false
 gameover=false
 controlsscreen=false
-startcountdown=nil --countdown for animations
-startcountdownframes=45
-startcountdown2=nil --countdown for fade in
+menuexit_t=nil --countdown for animations
+menuexit_dur=45
+menuexit_t2=nil --countdown for fade in
 
-wave_nextwavestarttime=-1
+wave_start_t=-1 --time for next wave (s)
 wave_enemycount=0
 wave_originsize=0
 wave_originx=0
@@ -501,7 +501,6 @@ wave_spawnwait=0
 wave_nextspawntime=0
 
 --UPDATE FUNCTIONS
-
 
 function start_can()
   watersuccess=false
@@ -526,7 +525,7 @@ function update_can()
 
   can_t -= 1
   if(can_t==0 and watersuccess) then
-    random_effect_text(water_texts)
+    random_txt_fx(water_texts)
   end
 end
 
@@ -548,10 +547,10 @@ function apply_powerup(powerup)
         f.health=min(f.health+50, f.maxhealth)
       end
     else
-      show_effect_text("fix apply_powerup instant")
+      show_txt_fx("fix apply_powerup instant")
     end
   else
-    show_effect_text("fix apply_powerup")
+    show_txt_fx("fix apply_powerup")
   end
   contents.type=powerup.type
   contents.life=contents.lifetime
@@ -574,7 +573,7 @@ function cooldown_powerups()
     elseif done_powerup.type=="stat" then
       player[done_powerup.key]=player_original_stats[done_powerup.key]
     else
-      show_effect_text"fix cooldown_powerups"
+      show_txt_fx"fix cooldown_powerups"
     end
     del(active_powerups, done_powerup)
 
@@ -670,7 +669,7 @@ function control_player()
   for p in all(active_powerups) do
     if(p_weapon==nil and p.type=="weapon") p_weapon=p
   end
-  p_weapon=p_weapon or player.default_weapon
+  p_weapon=p_weapon or default_weapon
 
   player.weapon_cooldown=max(player.weapon_cooldown-1, 0)
   local melee=p_weapon.melee or false
@@ -881,7 +880,7 @@ end
 function start_game(frommenu)
   player.x=playerstartx
   player.y=playerstarty
-  p_weapon=player.default_weapon
+  p_weapon=default_weapon
   screenx=screenstartx
   screeny=screenstarty
   isintro=frommenu
@@ -899,7 +898,7 @@ function start_game(frommenu)
   score=0
   kills=0
   wave=-1
-  wave_nextwavestarttime=-1
+  wave_start_t=-1
   wave_spawntimeend=-1
 
   --place flowers
@@ -968,8 +967,8 @@ function shoot_bullet()
     flip_x=false
     flip_y=false
     if p_weapon.bullet_sprite==nil then
-      sprite_base=player.default_weapon.bullet_sprite
-      animated=player.default_weapon.bullet_animated
+      sprite_base=default_weapon.bullet_sprite
+      animated=default_weapon.bullet_animated
     else
       sprite_base=p_weapon.bullet_sprite
       animated=p_weapon.bullet_animated or false
@@ -1009,7 +1008,7 @@ function shoot_bullet()
   end
 
   sfx(0, -1)
-  random_effect_text(shoot_texts, 0.05)
+  random_txt_fx(shoot_texts, 0.05)
   screen_shake=p_weapon.shake
   if(p_weapon.particles) oneshot_splash(weapontipx-4,weapontipy-4, p_weapon.particles)
 end
@@ -1025,7 +1024,7 @@ function hurt_enemy(e, damage)
     if not kill_sfx_this_frame then sfx(8) kill_sfx_this_frame=true end
     oneshot_splash(e.x,e.y, {count=10,sprite=50,gravity=0.001,lifetime=10})
     score += e.maxhealth * killscorescaler
-    random_effect_text(kill_texts, 0.1)
+    random_txt_fx(kill_texts, 0.1)
   end
 end
 
@@ -1142,7 +1141,7 @@ function update_enemies()
       e.moving=(targetdist>e.attackdist)
       e.flip_x=e.target.x<e.x
       if e.moving then
-        --show_effect_text(""..targetdist)
+        --show_txt_fx(""..targetdist)
         e.x += (e.maxspd / targetdist) * (e.target.x-e.x)
         e.y += (e.maxspd / targetdist) * (e.target.y-e.y)
       else --doing action
@@ -1181,7 +1180,7 @@ function update_health()
     music(-1)
     --isintro=false
     run_timer=true
-    wave_nextwavestarttime=time+4.1
+    wave_start_t=time+4.1
     wave_originx, wave_originy=get_random_point_around(player.x, player.y, wave_originrubberband, 128) --enforce rubberbanding for first enemy
     increment_wave()
     wave_spawn_enemy()
@@ -1209,12 +1208,12 @@ function wave_spawn_enemy()
 end
 
 function update_wave()
-  if wave_nextwavestarttime != -1 then --downtime
-    if time>=wave_nextwavestarttime then
+  if wave_start_t != -1 then --downtime
+    if time>=wave_start_t then
       --start wave
-      show_effect_text("wave "..(wave+1))
+      show_txt_fx("wave "..(wave+1))
 
-      wave_nextwavestarttime=-1
+      wave_start_t=-1
       wave_originx, wave_originy=get_random_point_around(player.x, player.y, wave_originrubberband, 128)
     end
   else --mid-wave time
@@ -1228,9 +1227,9 @@ function update_wave()
 
     else --cleanup time
       if not isintro and #enemies==0 then --all enemies cleared, begin downtime
-        --show_effect_text("start of downtime")
+        --show_txt_fx("start of downtime")
         increment_wave()
-        wave_nextwavestarttime=time+wave_downtime-(wave==0 and 3 or 0)
+        wave_start_t=time+wave_downtime-(wave==0 and 3 or 0)
       end
     end
 
@@ -1262,10 +1261,10 @@ function _update()
 
     if(run_timer) time += 0.0333333333
 
-    if(isintro and t==60) show_effect_text("water plants", true)
+    if(isintro and t==60) show_txt_fx("water plants", true)
 
     if run_timer and isintro then
-      if(time>1 and time<1.04) show_effect_text("protect the garden", true)
+      if(time>1 and time<1.04) show_txt_fx("protect the garden", true)
       if time<1 then
         screenx=outCubic(time, oldscreenx, enemyscreenx-oldscreenx, 1)
         screeny=outCubic(time, oldscreeny, enemyscreeny-oldscreeny, 1)
@@ -1316,8 +1315,8 @@ function _update()
       end
     else --main menu
       if btnp(5) then
-        if(controlsscreen and startcountdown==nil) then
-          startcountdown=startcountdownframes
+        if(controlsscreen and menuexit_t==nil) then
+          menuexit_t=menuexit_dur
           music(-1)
           sfx(22)
           sfx(23)
@@ -1327,17 +1326,17 @@ function _update()
     end
   end
 
-  if startcountdown != nil then
-    startcountdown -= 1
-    if startcountdown==0 then
-      startcountdown=nil
-      startcountdown2=30
+  if menuexit_t != nil then
+    menuexit_t -= 1
+    if menuexit_t==0 then
+      menuexit_t=nil
+      menuexit_t2=30
       poke(0x5F2D, 1) --enable mouse
       start_game(true)
     end
   end
-  if(startcountdown2 != nil) startcountdown2 -= 1
-  if(startcountdown2==0) startcountdown2=nil
+  if(menuexit_t2 != nil) menuexit_t2 -= 1
+  if(menuexit_t2==0) menuexit_t2=nil
 
   --update effects
   screen_shake_x=rnd(screen_shake*2)-screen_shake
@@ -1485,7 +1484,7 @@ function _draw()
   if not (gamerunning or gameover) then --MENU
     cls()
     draw_doomfire()
-    logo_offset=(startcountdown==nil) and 0 or (startcountdownframes-startcountdown)
+    logo_offset=(menuexit_t==nil) and 0 or (menuexit_dur-menuexit_t)
     map(112,0,0)
     print("eternal",51,58, 9)
     print("eternal",51,57, 7)
@@ -1506,8 +1505,8 @@ function _draw()
     spr(85, 60, 120)
     palt()
 
-    if(startcountdown != nil and startcountdown<34) then
-      dither_rect(0,0,128,128,0,(35-startcountdown)\2)
+    if(menuexit_t != nil and menuexit_t<34) then
+      dither_rect(0,0,128,128,0,(35-menuexit_t)\2)
     end
   else
     draw_lava()
@@ -1616,7 +1615,7 @@ function _draw()
       end
     end
 
-    if(effect_text_time>0) draw_effect_text();
+    if(txt_fx_time>0) draw_txt_fx();
 
 
     if gameover then
@@ -1628,13 +1627,13 @@ function _draw()
         screeny=outCubic(t_die, oldscreeny, dstscreeny, 50)
         if(t_die==50) random_gameover_text()
       else
-        effect_text_time=max(effect_text_time,1) --infinite text effect
+        txt_fx_time=max(txt_fx_time,1) --infinite text effect
         if(t_die%40<20) print("press \x97 to restart\n\n press \x8e for menu",31,100, 7) --1s on, 1s off
       end
     end
 
-    if startcountdown2 != nil then
-      dither_rect(0,0,128,128,0,max(startcountdown2\2,1))
+    if menuexit_t2 != nil then
+      dither_rect(0,0,128,128,0,max(menuexit_t2\2,1))
     end
   end
 
@@ -1655,87 +1654,87 @@ fierycolours={5,8,9,14,15,9}
 flag_ripandtear=false
 flag_saucyboy=false
 
-function random_effect_text(list, chance)
+function random_txt_fx(list, chance)
   if(isintro) return
 
   chance=chance or 0.3
   if not flag_ripandtear and rnd(1)<chance then
     flag_ripandtear=true
-    show_effect_text"rip and tear"
+    show_txt_fx"rip and tear"
   else
     if(rnd(1)<0.3) list=generic_texts
-    if(rnd(1)<chance) show_effect_text(list[flr(rnd(#list))+1])
+    if(rnd(1)<chance) show_txt_fx(list[flr(rnd(#list))+1])
   end
 end
 
 function random_gameover_text()
   s=gameover_texts[flr(rnd(#gameover_texts-(flag_saucyboy and 0 or 1)))+1]
-  show_effect_text(s, true, false)
+  show_txt_fx(s, true, false)
 end
 
-function show_effect_text(text, override, playsfx)
+function show_txt_fx(text, override, playsfx)
   if(text==generic_texts[1]) flag_saucyboy=true
   if(gameover and not override) return
   if(playsfx==nil) playsfx=true
-  effect_text=text
-  effect_text_time=40
-  effect_text_effect=flr(rnd(effect_count))
+  txt_fx_str=text
+  txt_fx_time=40
+  txt_fx_i=flr(rnd(effect_count))
   if(playsfx) sfx(5)
 end
 
-effect_text=nil
-effect_text_effect=0
-effect_text_time=0
-effect_text_width=6
+txt_fx_str=nil
+txt_fx_i=0
+txt_fx_time=0
+txt_fx_width=6
 effect_count=10
-function draw_effect_text()
-  if type(effect_text)=="string" then
-    draw_text(effect_text, 40)
+function draw_txt_fx()
+  if type(txt_fx_str)=="string" then
+    draw_text(txt_fx_str, 40)
   else
-    text=effect_text[1]
-    for i=2,#effect_text+1 do
-      draw_text(sub(text, ((i==2) and 0 or effect_text[i-1])+1, (i==#effect_text+1) and #text or effect_text[i]), 35+10*(i-2))
+    text=txt_fx_str[1]
+    for i=2,#txt_fx_str+1 do
+      draw_text(sub(text, ((i==2) and 0 or txt_fx_str[i-1])+1, (i==#txt_fx_str+1) and #text or txt_fx_str[i]), 35+10*(i-2))
     end
   end
 end
 
 function draw_text(text, texty)
-  effect_text_time -= 1;
+  txt_fx_time -= 1;
 
-  textx=(128-effect_text_width * #text)\2+(rnd(1)<0.1 and rnd(1)-.5 or 0) + ui_shake_x
+  textx=(128-txt_fx_width * #text)\2+(rnd(1)<0.1 and rnd(1)-.5 or 0) + ui_shake_x
   texty+=ui_shake_y
 
-  if effect_text_effect<4 then
+  if txt_fx_i<4 then
     for j=1,#text do
-      text_offset=effect_text_width*(j-1)
+      text_offset=txt_fx_width*(j-1)
       for i=0,6 do
         trig_oper=t/30+j/5+i/30
-        offset_x=2 * ((effect_text_effect % 2==0) and sin(trig_oper) or cos(trig_oper))+text_offset
+        offset_x=2 * ((txt_fx_i % 2==0) and sin(trig_oper) or cos(trig_oper))+text_offset
         offset_y=5 * sin(trig_oper)
-        print(sub(text,j,j), textx+offset_x, texty+offset_y, fierycolours[1+(i-effect_text_time\2)%#fierycolours])
+        print(sub(text,j,j), textx+offset_x, texty+offset_y, fierycolours[1+(i-txt_fx_time\2)%#fierycolours])
       end
-      print(sub(text,j,j), textx+text_offset, texty, (effect_text_effect>1) and (t%2)*7 or 0)
+      print(sub(text,j,j), textx+text_offset, texty, (txt_fx_i>1) and (t%2)*7 or 0)
     end
-  elseif effect_text_effect<8 then
+  elseif txt_fx_i<8 then
     for j=1,#text do --per char
-      text_offset=effect_text_width*(j-1)
+      text_offset=txt_fx_width*(j-1)
       for i=1,6 do --per copy of char
-        col=(effect_text_effect % 2==0) and fierycolours[1+(i-effect_text_time\2)%#fierycolours] or 9 --either rainbow or orange
-        if effect_text_time<33+i and effect_text_time>i then
+        col=(txt_fx_i % 2==0) and fierycolours[1+(i-txt_fx_time\2)%#fierycolours] or 9 --either rainbow or orange
+        if txt_fx_time<33+i and txt_fx_time>i then
           print(sub(text,j,j), textx-i+text_offset, texty+i, col)
         end
       end
-      if effect_text_time<33 then
-        print(sub(text,j,j), textx+text_offset, texty, (effect_text_effect>5) and (t%2)*7 or 0)
+      if txt_fx_time<33 then
+        print(sub(text,j,j), textx+text_offset, texty, (txt_fx_i>5) and (t%2)*7 or 0)
       end
     end
-  elseif effect_text_effect<10 then
+  elseif txt_fx_i<10 then
     for j=1,#text do
-      text_offset=effect_text_width*(j-1)
+      text_offset=txt_fx_width*(j-1)
       offset_x=text_offset
       offset_y=0
-      col=fierycolours[1+(t+effect_text_time\2)%#fierycolours]
-      print_outline(sub(text,j,j), textx+offset_x+ui_shake_x, texty+offset_y, (effect_text_effect%2==0) and 7 or col, (effect_text_effect%2==0) and col or 7)
+      col=fierycolours[1+(t+txt_fx_time\2)%#fierycolours]
+      print_outline(sub(text,j,j), textx+offset_x+ui_shake_x, texty+offset_y, (txt_fx_i%2==0) and 7 or col, (txt_fx_i%2==0) and col or 7)
     end
   end
 end
