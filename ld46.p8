@@ -249,7 +249,7 @@ cls() -- clear screen
 
 --CONSTANTS/CONFIG
 maxval=32767
-screenborder=32 -- how close guy can get before moving screen
+screenborder=40 -- how close guy can get before moving screen
 bulletspeed=0.5
 bulletlife=40 -- life of bullet in frames
 worldsizex=384 --size of arena in pixels
@@ -305,8 +305,9 @@ p_weapon=player.default_weapon
 
 --VARIABLES
 lmbdown=false
-click=false
-oldclick=false
+clickl=false
+oldlmb=false
+oldrmb=false
 screenx=screenstartx --camera position
 screeny=screenstarty
 screen_shake=0
@@ -590,7 +591,7 @@ function control_player()
 
   if stunnedframes<=stuncooldown then
     if gamerunning and not(isintro and run_timer) then
-      if btn(4) and can_t==0 then
+      if (btn(4) or btn(5,1) or rmbdown) and can_t==0 then
         start_can()
       end
 
@@ -708,9 +709,12 @@ end
 function update_mouse()
   mousex=stat(32)
   mousey=stat(33)
-  lmbdown=(stat(34)%2==1) and gamerunning
-  click=lmbdown and oldclick != lmbdown and gamerunning
-  oldclick=lmbdown
+  lmbdown=(stat(34)&1) and gamerunning
+  rmbdown=(stat(34)&2==2) and gamerunning
+  clickl=lmbdown and oldlmb != lmbdown
+  --clickr=rmbdown and oldrmb != rmbdown
+  oldlmb=lmbdown
+  oldrmb=rmbdown
 end
 
 function add_flower_patch(x, y, num, radius, health)
@@ -1486,7 +1490,7 @@ function _draw()
     print("eternal",51,58, 9)
     print("eternal",51,57, 7)
     if controlsscreen then
-      controlsstr="controls:\n\x8b\x94\x83\x91/esdf: move\nlmb: shoot gun\n\x8e : water plants\n\ndon't let the flowers die!"
+      controlsstr="controls:\n\x8b\x94\x83\x91/esdf: move\nLMB: shoot gun\nq/RMB: water plants\n\ndon't let the flowers die!"
       print_outline(controlsstr, 18,70,7)
       if(t%40<20) print_outline("press \x97 to begin",31,110, 7) --1s on, 1s off
     else
@@ -1562,7 +1566,7 @@ function _draw()
 
     --UI
     if gamerunning then
-      if oldclick then ret=17 else ret=16 end
+      if oldlmb then ret=17 else ret=16 end
       spr(ret, mousex-3+ui_shake_x, mousey-3+ui_shake_y)
 
       -- powerup bar
